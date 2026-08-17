@@ -35,7 +35,7 @@ RUN pdm use -f $(pdm venv list | grep -o '/venv/[^ ]*')/bin/python
 COPY pyproject.toml /app/
 COPY libs /app/libs
 
-RUN pdm add -G build scikit-build setuptools wheel pdm-backend hatchling --no-isolation --no-sync -v && pdm install --no-isolation -v
+RUN pdm add -G build scikit-build setuptools wheel pdm-backend --no-isolation --no-sync -v && pdm install --no-isolation -v
 
 COPY . .
 RUN chmod -R +x /app/_template_core/docker/scripts
