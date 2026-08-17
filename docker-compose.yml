@@ -1,0 +1,38 @@
+services:
+  app:
+    container_name: ingestion-engine-app
+    image: ${PY_DS_TEMPLATE_IMAGE_NAME:-py-ds-template}:${PY_DS_TEMPLATE_IMAGE_VERSION:-latest}
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        JFROG_XYLEM_PYPI_USER: "${JFROG_XYLEM_PYPI_USER}"
+        JFROG_XYLEM_PYPI_TOKEN: "${JFROG_XYLEM_PYPI_TOKEN}"
+        NEXUS_PYPI_USER: "${NEXUS_PYPI_USER}"
+        NEXUS_PYPI_TOKEN: "${NEXUS_PYPI_TOKEN}"
+    environment:
+        JFROG_XYLEM_PYPI_USER: "${JFROG_XYLEM_PYPI_USER}"
+        JFROG_XYLEM_PYPI_TOKEN: "${JFROG_XYLEM_PYPI_TOKEN}"
+        NEXUS_PYPI_USER: "${NEXUS_PYPI_USER}"
+        NEXUS_PYPI_TOKEN: "${NEXUS_PYPI_TOKEN}"
+    stdin_open: true
+    tty: true
+    volumes:
+      - .:/app
+      - /app/_template_core/docker/scripts
+      - venv_data:/venv
+  
+  postgres:
+    image: postgis/postgis:16-3.5
+    container_name: ingestion-engine-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-ingestion_engine}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  venv_data:

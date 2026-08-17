@@ -1,0 +1,9 @@
+[project]
+name = "ingestion-engine-david-ferrer
+description = "Ingestion Engine developed for the Final Masters Project"
+requires-python = ">=3.13, <3.14"
+version = "0.1.0"
+author = {name = "David Ferrer Pérez", email = "davidferrerrugby@gmail.com"}
+dependencies = [
+  
+]
