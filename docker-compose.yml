@@ -21,6 +21,8 @@ services:
       - .:/app
       - /app/_template_core/docker/scripts
       - venv_data:/venv
+    env_file:
+      - config.env
   
   postgres:
     image: postgis/postgis:16-3.5
