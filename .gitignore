@@ -1,2 +1,12 @@
 # Ignore .env
 *.env
+
+# Python environment files
+.python-version
+pdm.lock
+.pdm-python
+
+# Ignore pycache
+__pycache__/*.*
+__pycache__/
+__pycache__
