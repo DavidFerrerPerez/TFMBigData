@@ -1,13 +1,18 @@
 [project]
-name = "ingestion-engine-david-ferrer
+name = "ingestion-engine-david-ferrer"
 description = "Ingestion Engine developed for the Final Masters Project"
 requires-python = ">=3.13, <3.14"
 version = "0.1.0"
 author = {name = "David Ferrer Pérez", email = "davidferrerrugby@gmail.com"}
 dependencies = [
-  
+    "pyspark>=4.2.0"
 ]
 
 [build-system]
-requires = ["pdm-backend"]
+requires = [
+  "scikit-build",
+  "setuptools",
+  "wheel",
+  "pdm-backend"
+]
 build-backend = "pdm.backend"

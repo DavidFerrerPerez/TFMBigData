@@ -1,7 +1,7 @@
 services:
   app:
     container_name: ingestion-engine-app
-    image: ${PY_DS_TEMPLATE_IMAGE_NAME:-py-ds-template}:${PY_DS_TEMPLATE_IMAGE_VERSION:-latest}
+    image: ingestion-engine-david-ferrer:latest
     build:
       context: .
       dockerfile: Dockerfile
@@ -26,9 +26,9 @@ services:
     image: postgis/postgis:16-3.5
     container_name: ingestion-engine-postgres
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-      POSTGRES_DB: ${POSTGRES_DB:-ingestion_engine}
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: water_management
     ports:
       - "5432:5432"
     volumes:
@@ -36,3 +36,4 @@ services:
 
 volumes:
   venv_data:
+  postgres_data:

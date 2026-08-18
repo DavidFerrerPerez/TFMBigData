@@ -32,16 +32,9 @@ RUN pdm config venv.location /venv
 RUN pdm venv create 3.12
 RUN pdm use -f $(pdm venv list | grep -o '/venv/[^ ]*')/bin/python
 
-COPY pyproject.toml /app/
-COPY libs /app/libs
+COPY pyproject.toml pdm.lock /app/
+COPY src ./src
 
-RUN pdm add -G build scikit-build setuptools wheel pdm-backend --no-isolation --no-sync -v && pdm install --no-isolation -v
+RUN pdm install --check --no-editable
 
 COPY . .
-RUN chmod -R +x /app/_template_core/docker/scripts
-
-RUN echo 'source $(pdm venv list | grep -o "/venv/[^ ]*")/bin/activate' >> /etc/bash.bashrc
-RUN echo 'export PS1="\[\033[1;32m\][DOCKER - BASH MODE]\[\033[0m\] \\u@\\h:\\w\\$ "' >> /etc/bash.bashrc
-
-
-ENTRYPOINT ["/app/_template_core/docker/scripts/entrypoint.sh"]
