@@ -1,0 +1,24 @@
+# PDM artifacts
+.pdm-build/
+.pdm-python
+__pypackages__/
+
+# Python artifacts
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# venv (in case you have a local one)
+.venv/
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.vscode/
+.idea/
+
+# Env files with secrets
+.env

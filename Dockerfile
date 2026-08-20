@@ -1,4 +1,4 @@
-FROM python:3.12-bookworm
+FROM python:3.13-bookworm
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq-dev \
@@ -33,15 +33,13 @@ ENV NEXUS_PYPI_TOKEN=${NEXUS_PYPI_TOKEN}
 
 RUN pdm config venv.in_project false
 RUN pdm config venv.location /venv
-
-RUN pdm venv create 3.12
-
+RUN pdm venv create 3.13
 RUN pdm use -f $(pdm venv list | grep -o '/venv/[^ ]*')/bin/python
 
 COPY pyproject.toml pdm.lock /app/
 
-COPY src ./src
+RUN pdm install --no-editable
 
-RUN pdm install --check --no-editable
+COPY src ./src
 
 COPY . .

@@ -32,10 +32,10 @@ class PostgresSource:
             f"jdbc:postgresql://"
             f"{self.host}:{self.port}/{self.database}"
         )
-
+        
         return spark.read.jdbc(
             url=jdbc_url,
-            table=f"{schema}.{table_name}",
+            table=f'"{schema}"."{table_name}"',
             properties={
                 "user": self.user,
                 "password": self.password,

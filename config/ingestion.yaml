@@ -1,0 +1,13 @@
+source:
+  schema: "xvdataset_assets"
+
+tables:
+  - xv_pipe
+
+storage:
+  container: xv-dataset
+
+  paths:
+    raw: pruebas/raw
+    unified: pruebas/unified
+    standard: pruebas/standard
