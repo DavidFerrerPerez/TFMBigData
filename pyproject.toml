@@ -5,7 +5,14 @@ requires-python = ">=3.13, <3.14"
 version = "0.1.0"
 author = {name = "David Ferrer Pérez", email = "davidferrerrugby@gmail.com"}
 dependencies = [
-    "pyspark>=4.2.0"
+    "pyspark>=3.5.0,<4.0.0",
+    "sqlalchemy>=2.0.52",
+    "psycopg2>=2.9.12",
+    "azure-storage-blob>=5.0.0",
+    "apache-sedona>=1.7.0,<1.8.0",
+    "pandas>=2.0.0,<3.0.0",
+    "pyyaml>=6.0.3",
+    "pydantic>=2.13.4"
 ]
 
 [build-system]
@@ -16,3 +23,7 @@ requires = [
   "pdm-backend"
 ]
 build-backend = "pdm.backend"
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]
