@@ -20,7 +20,6 @@ services:
     volumes:
       - .:/app
       - /app/_template_core/docker/scripts
-      - venv_data:/venv
     env_file:
       - config.env
   
