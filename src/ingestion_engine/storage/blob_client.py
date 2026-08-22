@@ -13,7 +13,6 @@ class BlobClient:
     def __init__(self, connection_string: str, container_name: str):
 
         self._service_client = BlobServiceClient.from_connection_string(connection_string)
-
         self._container_client = self._service_client.get_container_client(container_name)
 
     def upload_file(self, local_path: str | Path, blob_path: str, overwrite: bool = True) -> None:
@@ -50,3 +49,19 @@ class BlobClient:
 
         for blob in blobs:
             self._container_client.delete_blob(blob.name)
+
+    def get_spark_path(self, blob_path: str) -> str:
+
+        """
+        Returns the Spark-compatible path for a blob in Azure Blob Storage.
+        
+        Args:
+            blob_path (str): The path of the blob in Azure Blob Storage.
+    
+        Returns:
+            str: The Spark-compatible path for the blob.
+        """
+        return (
+            f"wasbs://{self._container_client.container_name}@"
+            f"{self._service_client.account_name}.blob.core.windows.net/{blob_path}"
+        )
