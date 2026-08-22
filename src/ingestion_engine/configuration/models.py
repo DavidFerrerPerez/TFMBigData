@@ -2,7 +2,7 @@ from pydantic import BaseModel, Field
 
 
 class SourceConfig(BaseModel):
-    schema_name: str = Field(alias="schema")
+    db_schema: str
 
 class BlobPathConfig(BaseModel):
     raw: str
