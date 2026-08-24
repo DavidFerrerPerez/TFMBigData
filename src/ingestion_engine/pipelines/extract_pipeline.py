@@ -11,11 +11,11 @@ from ingestion_engine.configuration.loader import load_ingestion_config
 
 def run_extraction_pipeline(extraction_config, table_mapping, spark, blob_client):
 
-    for template in extraction_config.tables:
+    for template in extraction_config.templates:
     
         for table in table_mapping[template]:
 
-            logging.info(f"Reading table '{table}' from schema '{extraction_config.source.schema}'...")
+            logging.info(f"Reading table '{table}' from schema '{extraction_config.source.db_schema}'...")
 
             try:
                 df = read_table_from_postgres(
