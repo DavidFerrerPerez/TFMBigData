@@ -1,12 +1,13 @@
 services:
 
   jenkins:
-
     build:
       context: .
       dockerfile: Dockerfile.jenkins
 
     container_name: ingestion-engine-jenkins
+
+    user: root
 
     ports:
       - "8080:8080"
