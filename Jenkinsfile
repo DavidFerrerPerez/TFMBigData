@@ -2,6 +2,10 @@ pipeline {
 
     agent any
 
+    options {
+        skipDefaultCheckout(true)
+    }
+
     environment {
         IMAGE_NAME = "ingestion-engine-david-ferrer"
         IMAGE_TAG = "${BUILD_NUMBER}"
@@ -11,13 +15,13 @@ pipeline {
 
         stage('Checkout') {
             steps {
+                deleteDir()
                 checkout scm
             }
         }
 
         stage('Build') {
             steps {
-
                 echo "Building ${IMAGE_NAME}:${IMAGE_TAG}"
 
                 sh '''
@@ -30,7 +34,6 @@ pipeline {
 
         stage('Test') {
             steps {
-
                 sh '''
                     mkdir -p reports
 
@@ -41,18 +44,19 @@ pipeline {
                         --junitxml=/reports/test-results.xml
                 '''
             }
+
+            post {
+                always {
+                    junit allowEmptyResults: true,
+                          testResults: 'reports/test-results.xml'
+                }
+            }
         }
     }
 
     post {
-
-        always {
-            junit allowEmptyResults: true,
-                  testResults: 'reports/test-results.xml'
-        }
-
         success {
-            echo 'Build and tests completed successfully.'
+            echo 'Pipeline completed successfully.'
         }
 
         failure {
