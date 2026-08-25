@@ -1,4 +1,4 @@
-FROM python:3.12
+FROM python:3.13-bookworm
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq-dev \
@@ -8,10 +8,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     g++ \
     swig \
     cmake \
-    cron && \
-    apt-get clean && \
-    rm -rf /var/cache/apt/* && \
-    rm -rf /var/lib/apt/lists/*
+    cron \
+    openjdk-17-jre-headless \
+    && apt-get clean \
+    && rm -rf /var/cache/apt/* \
+    && rm -rf /var/lib/apt/lists/*
+
+ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+ENV PYTHONPATH="/app/src"
+ENV PATH="${JAVA_HOME}/bin:${PATH}"
 
 RUN pip install pdm
 
@@ -29,12 +34,13 @@ ENV NEXUS_PYPI_TOKEN=${NEXUS_PYPI_TOKEN}
 
 RUN pdm config venv.in_project false
 RUN pdm config venv.location /venv
-RUN pdm venv create 3.12
+RUN pdm venv create 3.13
 RUN pdm use -f $(pdm venv list | grep -o '/venv/[^ ]*')/bin/python
 
 COPY pyproject.toml pdm.lock /app/
-COPY src ./src
 
-RUN pdm install --check --no-editable
+RUN pdm install --no-editable
+
+COPY src ./src
 
 COPY . .

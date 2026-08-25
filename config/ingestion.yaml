@@ -1,0 +1,30 @@
+source:
+  db_schema: assets
+
+templates:
+  - XV_pipe
+
+storage:
+  container: xv-dataset
+
+  paths:
+    raw: pruebas/raw
+    standard: pruebas/standard
+    enriched: pruebas/enriched
+
+data_quality:
+  core_fields:
+    - id
+    - name
+    - geom
+  non_null_fields:
+    - id
+    - name
+  id_column: id
+  geometry_column: geom
+
+anonymization:
+  text_columns:
+      - XV_installation_location
+  geometry_columns:
+    - geom
