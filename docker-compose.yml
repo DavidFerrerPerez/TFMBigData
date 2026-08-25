@@ -1,7 +1,7 @@
 services:
   app:
     container_name: ingestion-engine-app
-    image: ingestion-engine-david-ferrer:latest
+    image: ingestion-engine-david-ferrer:${IMAGE_TAG:-latest}
     build:
       context: .
       dockerfile: Dockerfile
