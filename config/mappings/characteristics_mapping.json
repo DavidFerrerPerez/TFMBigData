@@ -1,0 +1,442 @@
+{
+    "XV_id": {
+        "field": "id",
+        "default_value": null
+    },
+    "XV_name": {
+        "field": "name",
+        "default_value": "Unknown"
+    },
+    "XV_element_id": {
+        "field": "assetid",
+        "default_value": 12
+    },
+    "XV_element_type": {
+        "field": "assettype",
+        "default_value": "Unknown"
+    },
+    "XV_installation": {
+        "field": "emplazamiento",
+        "default_value": "Unknown"
+    },
+    "XV_installation_location": {
+        "field": "dir_desn",
+        "default_value": "Unknown"
+    },
+    "XV_installation_date": {
+        "field": "installdate",
+        "default_value": "1900-01-01T11:22:33"
+    },
+    "XV_commissioning_date": {
+        "field": "inservicedate",
+        "default_value": "1900-01-01T11:22:33"
+    },
+    "XV_decommission_date": {
+        "field": "retireddate",
+        "default_value": "1900-01-01T11:22:33"
+    },
+    "XV_removal_date": {
+        "field": "retireddate",
+        "default_value": "1900-01-01T11:22:33"
+    },
+    "XV_update_date": {
+        "field": "lastupdate",
+        "default_value": "1900-01-01T11:22:33"
+    },
+    "XV_registration_date": {
+        "field": "creationdate",
+        "default_value": "1900-01-01T11:22:33"
+    },
+    "XV_lifecycle_status": {
+        "field": "lifecyclestatus",
+        "default_value": "Unknown"
+    },
+    "XV_current_status": {
+        "field": "presentstatus",
+        "default_value": "Unknown"
+    },
+    "XV_default_status": {
+        "field": "normalstatus",
+        "default_value": "Unknown"
+    },
+    "XV_water_type": {
+        "field": "fluidtype",
+        "default_value": "Unknown"
+    },
+    "XV_water_usage": {
+        "field": "use",
+        "default_value": "Unknown"
+    },
+    "XV_water_destination": {
+        "field": "destino",
+        "default_value": "Unknown"
+    },
+    "XV_sector_name": {
+        "field": "name",
+        "default_value": "Unknown"
+    },
+    "XV_sector_type": {
+        "field": "XV_sector_type",
+        "default_value": "Unknown"
+    },
+    "XV_network_type": {
+        "field": "network_name",
+        "default_value": "Unknown"
+    },
+    "XV_branch_id": {
+        "field": "XV_branch_id",
+        "default_value": "Unknown"
+    },
+    "XV_depth": {
+        "field": "averagedepth",
+        "default_value": 0
+    },
+    "XV_length": {
+        "field": "length",
+        "default_value": 0
+    },
+    "XV_capacity": {
+        "field": "XV_capacity",
+        "default_value": 0
+    },
+    "XV_volume": {
+        "field": "volume",
+        "default_value": 0
+    },
+    "XV_nominal_diameter": {
+        "field": "diameter",
+        "default_value": 0
+    },
+    "XV_external_diameter": {
+        "field": "diameter",
+        "default_value": 0
+    },
+    "XV_internal_diameter": {
+        "field": "diameter",
+        "default_value": 0
+    },
+    "XV_ground_elevation": {
+        "field": "elevation",
+        "default_value": 0
+    },
+    "XV_maximum_level": {
+        "field": "maxlevel",
+        "default_value": 0
+    },
+    "XV_minimum_level": {
+        "field": "minlevel",
+        "default_value": 0
+    },
+    "XV_elevation": {
+        "field": "waterelev",
+        "default_value": 0
+    },
+    "XV_description_pipe_material": {
+        "field": "material",
+        "default_value": "Unknown"
+    },
+    "XV_code_pipe_material": {
+        "field": "material",
+        "default_value": "Unknown"
+    },
+    "XV_manufacturer": {
+        "field": "manufacturer",
+        "default_value": "Unknown"
+    },
+    "XV_model_db": {
+        "field": "model",
+        "default_value": "Unknown"
+    },
+    "XV_serial": {
+        "field": "serialnumber",
+        "default_value": 0
+    },
+    "XV_internal_serial_number": {
+        "field": "communicator_internal_serial_number",
+        "default_value": "Unknown"
+    },
+    "XV_comments": {
+        "field": "notes",
+        "default_value": ""
+    },
+    "XV_warnings": {
+        "field": "warnings",
+        "default_value": ""
+    },
+    "XV_upstream_node": {
+        "field": "XV_upstream_node",
+        "default_value": 0
+    },
+    "XV_downstream_node": {
+        "field": "XV_upstream_node",
+        "default_value": 0
+    },
+    "XV_shape": {
+        "field": "XV_shape",
+        "default_value": "rectangular"
+    },
+    "XV_pressure": {
+        "field": "XV_pressure",
+        "default_value": 0
+    },
+    "XV_maximum_pressure": {
+        "field": "XV_maximum_pressure",
+        "default_value": 0
+    },
+    "XV_sampling_point": {
+        "field": "XV_sampling_point",
+        "default_value": "Unknown"
+    },
+    "XV_sampling_type": {
+        "field": "XV_sampling_type",
+        "default_value": "Unknown"
+    },
+    "XV_sample_type": {
+        "field": "assettype",
+        "default_value": "Unknown"
+    },
+    "XV_sample_frequency": {
+        "field": "XV_sample_frequency",
+        "default_value": "Unknown"
+    },
+    "XV_sensor_id": {
+        "field": "assetid",
+        "default_value": "Unknown"
+    },    
+    "XV_sensor_name": {
+        "field": "name",
+        "default_value": "Unknown"
+    },
+    "XV_sensor_type": {
+        "field": "assettype",
+        "default_value": "Unknown"
+    },
+    "XV_sensor_model": {
+        "field": "model",
+        "default_value": "Unknown"
+    },
+    "XV_sensor_manufacturer": {
+        "field": "manufacturer",
+        "default_value": "Unknown"
+    },
+    "XV_control": {
+        "field": "XV_control",
+        "default_value": "Unknown"
+    },
+    "XV_control_id": {
+        "field": "XV_control_id",
+        "default_value": 0
+    },
+    "XV_control_type": {
+        "field": "XV_control_type",
+        "default_value": "Unknown"
+    },
+    "XV_control_model": {
+        "field": "model",
+        "default_value": "Unknown"
+    },
+    "XV_control_manufacturer": {
+        "field": "manufacturer",
+        "default_value": "Unknown"
+    },
+    "XV_control_code": {
+        "field": "XV_control_code",
+        "default_value": "Unknown"
+    },
+    "XV_pump_type": {
+        "field": "XV_pump_type",
+        "default_value": "Unknown"
+    },
+    "XV_pump_model": {
+        "field": "model",
+        "default_value": "Unknown"
+    },
+    "XV_pump_manufacturer": {
+        "field": "manufacturer",
+        "default_value": "Unknown"
+    },
+    "XV_valve_type": {
+        "field": "classinfo",
+        "default_value": "Unknown"
+    },
+    "XV_valve_code": {
+        "field": "originkey",
+        "default_value": "Unknown"
+    },
+    "XV_filter_type": {
+        "field": "designtype",
+        "default_value": "Unknown"
+    },
+    "XV_pipeline_type": {
+        "field": "hydraulicfunction",
+        "default_value": "Unknown"
+    },
+    "XV_customer_meter_type": {
+        "field": "metrological_technology",
+        "default_value": "Unknown"
+    },
+    "XV_meter_code": {
+        "field": "sgacode",
+        "default_value": "Unknown"
+    },
+    "XV_client_id": {
+        "field": "codigo_ps",
+        "default_value": 0
+    },
+    "XV_client_name": {
+        "field": "codigo_ps",
+        "default_value": "Unknown"
+    },
+    "XV_hash_code": {
+        "field": "readings_hash",
+        "default_value": 0
+    },
+    "XV_timezone": {
+        "field": "XV_timezone",
+        "default_value": "UTC"
+    },
+    "XV_scada": {
+        "field": "XV_scada",
+        "default_value": false
+    },
+    "XV_walk_by": {
+        "field": "XV_walk_by",
+        "default_value": false
+    },
+    "XV_contact_name": {
+        "field": "maintainer",
+        "default_value": "Unknown"
+    },
+    "XV_contact_email": {
+        "field": "XV_contact_email",
+        "default_value": "Unknown"
+    },
+    "XV_contact_phone": {
+        "field": "XV_contact_phone",
+        "default_value": "Unknown"
+    },
+    "XV_code_communication_technology": {
+        "field": "XV_code_communication_technology",
+        "default_value": "Unknown"
+    },
+    "XV_data_communicator_manufacturer": {
+        "field": "communicator_manufacturer",
+        "default_value": "Unknown"
+    },
+    "XV_data_communicator_model": {
+        "field": "XV_data_communicator_model",
+        "default_value": "Unknown"
+    },
+    "XV_data_communicator_type": {
+        "field": "XV_data_communicator_type",
+        "default_value": "Unknown"
+    },
+    "XV_description_communication_technology": {
+        "field": "XV_description_communication_technology",
+        "default_value": "Unknown"
+    },
+    "XV_firmware_version": {
+        "field": "XV_firmware_version",
+        "default_value": "Unknown"
+    },
+    "XV_code_model_customer_meter": {
+        "field": "XV_code_model_customer_meter",
+        "default_value": "Unknown"
+    },
+    "XV_flow_capacity": {
+        "field": "XV_flow_capacity",
+        "default_value": 0
+    },
+    "XV_frequency_control": {
+        "field": "XV_frequency_control",
+        "default_value": "Unknown"
+    },
+    "XV_iccid": {
+        "field": "XV_iccid",
+        "default_value": "Unknown"
+    },
+    "XV_imei": {
+        "field": "XV_imei",
+        "default_value": "Unknown"
+    },
+    "XV_imsi": {
+        "field": "XV_imsi",
+        "default_value": "Unknown"
+    },
+    "XV_mobile_operator": {
+        "field": "XV_mobile_operator",
+        "default_value": "Unknown"
+    },
+    "XV_power": {
+        "field": "XV_power",
+        "default_value": 0.0
+    },
+    "XV_reading_frequency": {
+        "field": "XV_reading_frequency",
+        "default_value": "Unknown"
+    },
+    "XV_serial_number": {
+        "field": "XV_serial_number",
+        "default_value": "Unknown"
+    },
+    "XV_current_opening_percentaje": {
+        "field": "XV_current_opening_percentaje",
+        "default_value": 0.0
+    },
+    "XV_default_opening_percentaje": {
+        "field": "XV_default_opening_percentaje",
+        "default_value": 0.0
+    },
+    "XV_connection_service_type": {
+        "field": "use",
+        "default_value": "Unknown"
+    },
+    "XV_is_on_street_level": {
+        "field": "XV_is_on_street_level",
+        "default_value": true
+    },
+    "XV_description_manufacture_customer_meter": {
+        "field": "manufacturer",
+        "default_value": "Unknown"
+    },
+    "XV_size_code": {
+        "field": "diameter",
+        "default_value": "Unknown"
+    },
+    "XV_size_description": {
+        "field": "diameter",
+        "default_value": "Unknown"
+    },
+    "XV_sphera_digits": {
+        "field": "XV_sphera_digits",
+        "default_value": "Unknown"
+    },
+    "XV_warranty_period": {
+        "field": "XV_warranty_period",
+        "default_value": 12
+    },
+    "XV_adress": {
+        "field": "dir_desn",
+        "default_value": "Unknown"
+    },
+    "XV_fixed_network": {
+        "field": "XV_fixed_network",
+        "default_value": true
+    },
+    "XV_reading_method": {
+        "field": "XV_reading_method",
+        "default_value": "Radio"
+    },
+    "XV_reading_period": {
+        "field": "period",
+        "default_value": "Unknown"
+    },
+    "XV_steet_level": {
+        "field": "XV_steet_level",
+        "default_value": true
+    },
+    "XV_uninterrupted_consum": {
+        "field": "XV_uninterrupted_consum",
+        "default_value": true
+    }
+}
