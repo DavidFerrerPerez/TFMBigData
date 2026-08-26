@@ -10,7 +10,7 @@ pipeline {
 
         REGISTRY = "ghcr.io"
 
-        REGISTRY_NAMESPACE = "YOUR_GITHUB_USERNAME"
+        REGISTRY_NAMESPACE = "DavidFerrerPerez"
     }
 
     stages {
