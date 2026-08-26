@@ -9,7 +9,7 @@ pipeline {
         IMAGE_TAG = "${BUILD_NUMBER}"
 
         REGISTRY = "ghcr.io"
-
+        
         REGISTRY_NAMESPACE = "davidferrerperez"
     }
 
@@ -55,7 +55,7 @@ pipeline {
         stage('Publish') {
 
             when {
-                env.GIT_BRANCH == 'origin/main'
+                branch 'main'
             }
 
             steps {
@@ -100,7 +100,7 @@ pipeline {
         stage('Deploy') {
 
             when {
-                env.GIT_BRANCH == 'origin/main'
+                branch 'main'
             }
 
             steps {
