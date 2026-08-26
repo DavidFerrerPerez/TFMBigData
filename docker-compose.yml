@@ -1,3 +1,5 @@
+name: ingestion-engine
+
 services:
   app:
     container_name: ingestion-engine-app
