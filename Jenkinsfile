@@ -9,8 +9,8 @@ pipeline {
         IMAGE_TAG = "${BUILD_NUMBER}"
 
         REGISTRY = "ghcr.io"
-
-        REGISTRY_NAMESPACE = "DavidFerrerPerez"
+        
+        REGISTRY_NAMESPACE = "davidferrerperez"
     }
 
     stages {
