@@ -3,7 +3,6 @@
 
 # Python environment files
 .python-version
-pdm.lock
 .pdm-python
 
 # Ignore pycache
