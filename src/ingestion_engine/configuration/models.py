@@ -12,7 +12,6 @@ class SourceConfig(BaseModel):
 class BlobPathConfig(BaseModel):
     raw: str
     standard: str
-    enriched: str
 
 class StorageConfig(BaseModel):
     container: str
@@ -23,8 +22,10 @@ class AnonymizationConfig(BaseModel):
     geometry_columns: list[str]
 
 class IngestionConfig(BaseModel):
+    available_environments: list[str]
     source: SourceConfig
     templates: list[str]
     storage: StorageConfig
     data_quality: DataQualityConfig
     anonymization: AnonymizationConfig
+    main_hierarchy_parent: int
