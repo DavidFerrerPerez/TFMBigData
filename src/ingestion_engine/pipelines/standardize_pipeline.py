@@ -5,7 +5,7 @@ import json
 from sedona.spark import SedonaContext
 
 from ingestion_engine.storage.blob_client import BlobClient
-from ingestion_engine.configuration.loader import load_ingestion_config
+from ingestion_engine.configuration.loader import load_ingestion_config, load_table_mapping
 from ingestion_engine.transformation.table_unificator import unify_tables
 from ingestion_engine.dmd.dmd_api import DMDApi
 from ingestion_engine.transformation.column_caster import transform_with_template_schema
@@ -16,58 +16,9 @@ from ingestion_engine.validation.null_validation import remove_mandatory_nulls
 from ingestion_engine.transformation.anonymization import anonymize_dataframe
 from ingestion_engine.validation.complete_validation import validate_dataframe
 from ingestion_engine.storage.geoparquet_writer import write_df_to_geoparquet
-
-def configure_logging():
-    """Suppress verbose Azure SDK logs."""
-    logging.getLogger("azure.core.pipeline.policies.http_logging_policy").setLevel(logging.WARNING)
-    logging.getLogger("azure.storage").setLevel(logging.WARNING)
-    logging.getLogger("azure").setLevel(logging.WARNING)
-
-def load_table_mapping(mapping_file_path: str) -> dict:
-    """
-    Load the table mapping from a JSON file.
-    """
-    with open(mapping_file_path, "r") as file:
-        table_mapping = json.load(file)
-
-    return table_mapping
-
-def create_spark_session(app_name: str = "ingestion-engine") -> SedonaContext:
-    """
-    Create and configure a Spark session with Sedona support.
-    """
-    config = (
-        SedonaContext.builder()
-        .appName(app_name)
-        .config(
-            "spark.jars.packages",
-            ",".join([
-                "org.postgresql:postgresql:42.7.13",
-                "org.apache.sedona:sedona-spark-3.5_2.12:1.7.1",
-                "org.datasyslab:geotools-wrapper:1.7.1-28.5",
-                "org.apache.hadoop:hadoop-azure:3.3.4",
-            ])
-        )
-        .config(
-            f"spark.hadoop.fs.azure.account.key.{os.environ['AZURE_STORAGE_ACCOUNT_NAME']}.blob.core.windows.net",
-            os.environ["AZURE_STORAGE_ACCOUNT_KEY"],
-        )
-        .getOrCreate()
-    )
-
-    spark = SedonaContext.create(config)
-
-    return spark
-
-def validate_blob_config(connection_string: str, container_name: str) -> None:
-    """
-    Validate the Azure Blob Storage configuration.
-    """
-    if not connection_string:
-        raise ValueError("Azure Blob Storage connection string is not set.")
-
-    if not container_name:
-        raise ValueError("Azure Blob Storage container name is not set.")
+from ingestion_engine.logging.config import configure_logging
+from ingestion_engine.spark.session import create_spark_session
+from ingestion_engine.configuration.validation import validate_blob_config
 
 
 def process_template_tables(spark, blob_client: BlobClient, ingestion_config, table_mapping, dmdapi, template: str) -> list:

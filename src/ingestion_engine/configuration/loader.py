@@ -1,6 +1,6 @@
-from pathlib import Path
-
+import json
 import yaml
+from pathlib import Path
 
 from ingestion_engine.configuration.models import IngestionConfig
 
@@ -26,3 +26,9 @@ def load_ingestion_config(path: str | Path) -> IngestionConfig:
         )
 
     return IngestionConfig.model_validate(raw_config)
+
+def load_table_mapping(mapping_file_path: str | Path) -> dict:
+    """Load a table mapping from a JSON file."""
+
+    with open(mapping_file_path, "r", encoding="utf-8") as file:
+        return json.load(file)
