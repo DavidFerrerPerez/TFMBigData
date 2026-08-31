@@ -29,3 +29,4 @@ class IngestionConfig(BaseModel):
     data_quality: DataQualityConfig
     anonymization: AnonymizationConfig
     main_hierarchy_parent: int
+    batch_size: int

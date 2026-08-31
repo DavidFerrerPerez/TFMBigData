@@ -36,3 +36,5 @@ anonymization:
     - geom
 
 main_hierarchy_parent: 123456
+
+batch_size: 100
