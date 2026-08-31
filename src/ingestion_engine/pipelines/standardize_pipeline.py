@@ -1,6 +1,7 @@
 import os
 import logging
 import json
+import sys
 
 from sedona.spark import SedonaContext
 
@@ -39,7 +40,7 @@ def process_template_tables(spark, blob_client: BlobClient, ingestion_config, ta
 
     source_tables = []
 
-    template_id = dmdapi.get_template_id_by_code(template)
+    template_id = dmdapi.get_template_metadata(template).get("id")
     template_schema = dmdapi.get_template_schema_by_id(template_id)
 
     for table in table_mapping[template]:
@@ -62,7 +63,7 @@ def process_template_tables(spark, blob_client: BlobClient, ingestion_config, ta
     return source_tables
 
 
-def run_standardization_pipeline(spark, blob_client: BlobClient, ingestion_config, table_mapping, environment = "DEV"):
+def run_standardization_pipeline(spark, blob_client: BlobClient, ingestion_config, table_mapping, dmdapi):
     """
     Runs the standardization pipeline for the given ingestion configuration and table mapping.
 
@@ -73,8 +74,6 @@ def run_standardization_pipeline(spark, blob_client: BlobClient, ingestion_confi
         table_mapping: The table mapping for templates.
         environment (str, optional): The environment (default is "DEV").
     """
-
-    dmdapi = DMDApi(dmd_api_url=os.environ[f'DMD_API_URL_{environment}'], token=os.environ[f'DMD_API_TOKEN_{environment}'])
 
     for template in ingestion_config.templates:
 
@@ -127,13 +126,17 @@ def run_standardization_pipeline(spark, blob_client: BlobClient, ingestion_confi
 
 
 
-def main():
+def main(environment: str):
+
+    ingestion_config = load_ingestion_config("config/ingestion.yaml")
+
+    if environment not in ingestion_config.available_environments:
+        raise ValueError(f"Invalid environment '{environment}'. Available environments: {ingestion_config.available_environments}")
 
     logging.info("Starting the standardization pipeline...")
 
     configure_logging()
 
-    ingestion_config = load_ingestion_config("config/ingestion.yaml")
     table_mapping = load_table_mapping("config/mappings/templates_mapping.json")
 
     spark = create_spark_session(app_name="ingestion-engine-standardization")
@@ -143,12 +146,17 @@ def main():
 
     validate_blob_config(connection_string, container_name)
 
+    dmdapi = DMDApi(
+        dmd_api_url=os.environ[f'DMD_API_URL_{environment}'],
+        token=os.environ[f'DMD_API_TOKEN_{environment}']
+    )
+
     blob_client = BlobClient(
         connection_string=connection_string,
         container_name=container_name,
     )
 
-    run_standardization_pipeline(spark, blob_client, ingestion_config, table_mapping)
+    run_standardization_pipeline(spark, blob_client, ingestion_config, table_mapping, dmdapi)
 
     spark.stop()
 
@@ -156,4 +164,7 @@ def main():
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
-    main()
+    if len(sys.argv) < 2:
+        raise Exception("Must provide an environment argument.")
+
+    main(environment=sys.argv[1].upper())
