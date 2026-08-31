@@ -126,7 +126,6 @@ def test_process_template_tables_empty_table_list_returns_empty(mock_read, mock_
 
 # run_standardization_pipeline
 
-@patch.dict("os.environ", {"DMD_API_URL_DEV": "http://dmd.example.com", "DMD_API_TOKEN_DEV": "token"})
 @patch("ingestion_engine.pipelines.standardize_pipeline.write_df_to_geoparquet")
 @patch("ingestion_engine.pipelines.standardize_pipeline.validate_dataframe")
 @patch("ingestion_engine.pipelines.standardize_pipeline.anonymize_dataframe")
@@ -135,9 +134,8 @@ def test_process_template_tables_empty_table_list_returns_empty(mock_read, mock_
 @patch("ingestion_engine.pipelines.standardize_pipeline.fill_name")
 @patch("ingestion_engine.pipelines.standardize_pipeline.unify_tables")
 @patch("ingestion_engine.pipelines.standardize_pipeline.process_template_tables")
-@patch("ingestion_engine.pipelines.standardize_pipeline.DMDApi")
 def test_run_pipeline_processes_all_templates(
-    mock_dmdapi_cls, mock_process, mock_unify, mock_fill,
+    mock_process, mock_unify, mock_fill,
     mock_dedup, mock_nulls, mock_anon, mock_validate, mock_write,
 ):
     ingestion_config = MagicMock()
@@ -150,14 +148,13 @@ def test_run_pipeline_processes_all_templates(
     mock_nulls.return_value = MagicMock()
     mock_anon.return_value = MagicMock()
 
-    run_standardization_pipeline(MagicMock(), MagicMock(), ingestion_config, {})
+    run_standardization_pipeline(MagicMock(), MagicMock(), ingestion_config, {}, MagicMock())
 
     assert mock_process.call_count == 2
     assert mock_unify.call_count == 2
     assert mock_write.call_count == 2
 
 
-@patch.dict("os.environ", {"DMD_API_URL_DEV": "http://dmd.example.com", "DMD_API_TOKEN_DEV": "token"})
 @patch("ingestion_engine.pipelines.standardize_pipeline.write_df_to_geoparquet")
 @patch("ingestion_engine.pipelines.standardize_pipeline.validate_dataframe")
 @patch("ingestion_engine.pipelines.standardize_pipeline.anonymize_dataframe")
@@ -166,21 +163,19 @@ def test_run_pipeline_processes_all_templates(
 @patch("ingestion_engine.pipelines.standardize_pipeline.fill_name")
 @patch("ingestion_engine.pipelines.standardize_pipeline.unify_tables")
 @patch("ingestion_engine.pipelines.standardize_pipeline.process_template_tables")
-@patch("ingestion_engine.pipelines.standardize_pipeline.DMDApi")
 def test_run_pipeline_skips_template_on_process_error(
-    mock_dmdapi_cls, mock_process, mock_unify, mock_fill,
+    mock_process, mock_unify, mock_fill,
     mock_dedup, mock_nulls, mock_anon, mock_validate, mock_write,
 ):
     ingestion_config = MagicMock()
     ingestion_config.templates = ["template1"]
     mock_process.side_effect = Exception("DMD unreachable")
 
-    run_standardization_pipeline(MagicMock(), MagicMock(), ingestion_config, {})
+    run_standardization_pipeline(MagicMock(), MagicMock(), ingestion_config, {}, MagicMock())
 
     mock_write.assert_not_called()
 
 
-@patch.dict("os.environ", {"DMD_API_URL_DEV": "http://dmd.example.com", "DMD_API_TOKEN_DEV": "token"})
 @patch("ingestion_engine.pipelines.standardize_pipeline.write_df_to_geoparquet")
 @patch("ingestion_engine.pipelines.standardize_pipeline.validate_dataframe")
 @patch("ingestion_engine.pipelines.standardize_pipeline.anonymize_dataframe")
@@ -189,9 +184,8 @@ def test_run_pipeline_skips_template_on_process_error(
 @patch("ingestion_engine.pipelines.standardize_pipeline.fill_name")
 @patch("ingestion_engine.pipelines.standardize_pipeline.unify_tables")
 @patch("ingestion_engine.pipelines.standardize_pipeline.process_template_tables")
-@patch("ingestion_engine.pipelines.standardize_pipeline.DMDApi")
 def test_run_pipeline_skips_template_on_validation_error(
-    mock_dmdapi_cls, mock_process, mock_unify, mock_fill,
+    mock_process, mock_unify, mock_fill,
     mock_dedup, mock_nulls, mock_anon, mock_validate, mock_write,
 ):
     ingestion_config = MagicMock()
@@ -205,31 +199,18 @@ def test_run_pipeline_skips_template_on_validation_error(
     mock_anon.return_value = MagicMock()
     mock_validate.side_effect = ValueError("duplicate IDs")
 
-    run_standardization_pipeline(MagicMock(), MagicMock(), ingestion_config, {})
+    run_standardization_pipeline(MagicMock(), MagicMock(), ingestion_config, {}, MagicMock())
 
     mock_write.assert_not_called()
 
 
-@patch.dict("os.environ", {"DMD_API_URL_DEV": "http://dmd.example.com", "DMD_API_TOKEN_DEV": "token"})
-@patch("ingestion_engine.pipelines.standardize_pipeline.write_df_to_geoparquet")
-@patch("ingestion_engine.pipelines.standardize_pipeline.validate_dataframe")
-@patch("ingestion_engine.pipelines.standardize_pipeline.anonymize_dataframe")
-@patch("ingestion_engine.pipelines.standardize_pipeline.remove_mandatory_nulls")
-@patch("ingestion_engine.pipelines.standardize_pipeline.remove_duplicates")
-@patch("ingestion_engine.pipelines.standardize_pipeline.fill_name")
-@patch("ingestion_engine.pipelines.standardize_pipeline.unify_tables")
 @patch("ingestion_engine.pipelines.standardize_pipeline.process_template_tables")
-@patch("ingestion_engine.pipelines.standardize_pipeline.DMDApi")
-def test_run_pipeline_uses_correct_environment(
-    mock_dmdapi_cls, mock_process, mock_unify, mock_fill,
-    mock_dedup, mock_nulls, mock_anon, mock_validate, mock_write,
-):
+def test_run_pipeline_forwards_dmdapi_to_process_template_tables(mock_process):
     ingestion_config = MagicMock()
-    ingestion_config.templates = []
+    ingestion_config.templates = ["template1"]
+    mock_process.side_effect = Exception("stop early")
 
-    run_standardization_pipeline(MagicMock(), MagicMock(), ingestion_config, {}, environment="DEV")
+    dmdapi = MagicMock()
+    run_standardization_pipeline(MagicMock(), MagicMock(), ingestion_config, {}, dmdapi)
 
-    mock_dmdapi_cls.assert_called_once_with(
-        dmd_api_url="http://dmd.example.com",
-        token="token",
-    )
+    assert mock_process.call_args[0][4] is dmdapi

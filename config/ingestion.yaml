@@ -1,3 +1,10 @@
+
+available_environments:
+  - DEV
+  - QA
+  - PRE
+  - PROD
+
 source:
   db_schema: assets
 
@@ -10,7 +17,6 @@ storage:
   paths:
     raw: pruebas/raw
     standard: pruebas/standard
-    enriched: pruebas/enriched
 
 data_quality:
   core_fields:
@@ -28,3 +34,7 @@ anonymization:
       - XV_installation_location
   geometry_columns:
     - geom
+
+main_hierarchy_parent: 123456
+
+batch_size: 100
