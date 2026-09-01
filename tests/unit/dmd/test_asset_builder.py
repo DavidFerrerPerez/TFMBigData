@@ -1,4 +1,5 @@
 from unittest.mock import MagicMock
+from shapely.geometry import Point, LineString
 
 from ingestion_engine.dmd.asset_builder import build_asset, build_geometry
 
@@ -87,24 +88,24 @@ def test_build_asset_sets_main_hierarchy_parent():
 # build_geometry
 
 def test_build_geometry_returns_type_and_coordinates_from_template():
-    geometry = _make_geometry(coords=[(10.0, 20.0)])
+    geometry = Point(10.0, 20.0)
     asset_data = _make_asset_data(geometry=geometry)
     asset_data.asDict.return_value = {"geometry": geometry}
 
     result = build_geometry({"geometry_type": "Point"}, asset_data, "geometry")
 
-    assert result == {"type": "Point", "coordinates": [(10.0, 20.0)]}
+    assert result == {"type": "Point", "coordinates": (10.0, 20.0)}
 
 
 def test_build_geometry_falls_back_to_asset_geom_type_when_template_has_none():
-    geometry = _make_geometry(geom_type="LineString", coords=[(0.0, 0.0), (1.0, 1.0)])
+    geometry = LineString([(0.0, 0.0), (1.0, 1.0)])
     asset_data = _make_asset_data(geometry=geometry)
     asset_data.asDict.return_value = {"geometry": geometry}
 
     result = build_geometry({"geometry_type": None}, asset_data, "geometry")
 
     assert result["type"] == "LineString"
-    assert result["coordinates"] == [(0.0, 0.0), (1.0, 1.0)]
+    assert result["coordinates"] == ((0.0, 0.0), (1.0, 1.0))
 
 
 def test_build_geometry_returns_none_when_no_geometry_type_at_all():
