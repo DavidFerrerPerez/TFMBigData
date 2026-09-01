@@ -113,11 +113,11 @@ def test_skip_non_geometry_types():
 # read_table_from_postgres
 
 ENV = {
-    "POSTGRES_HOST": "myhost",
-    "POSTGRES_PORT": "5432",
-    "POSTGRES_DATABASE": "mydb",
-    "POSTGRES_USER": "myuser",
-    "POSTGRES_PASSWORD": "mypass",
+    "POSTGRES_HOST_ENV": "myhost",
+    "POSTGRES_PORT_ENV": "5432",
+    "POSTGRES_DATABASE_ENV": "mydb",
+    "POSTGRES_USER_ENV": "myuser",
+    "POSTGRES_PASSWORD_ENV": "mypass",
 }
 
 
@@ -127,7 +127,7 @@ def test_read_table_uses_env_vars():
          patch("ingestion_engine.extraction.postgres_reader.PostgresSource") as mock_cls, \
          patch("ingestion_engine.extraction.postgres_reader._convert_geometry_columns"):
         mock_cls.return_value = MagicMock()
-        read_table_from_postgres("schema", "table", spark)
+        read_table_from_postgres("schema", "table", spark, "ENV")
 
     mock_cls.assert_called_once_with(
         host="myhost", port=5432, database="mydb", user="myuser", password="mypass"
@@ -141,7 +141,7 @@ def test_read_table_calls_read_table_method():
          patch("ingestion_engine.extraction.postgres_reader._convert_geometry_columns"):
         mock_source = MagicMock()
         mock_cls.return_value = mock_source
-        read_table_from_postgres("myschema", "mytable", spark)
+        read_table_from_postgres("myschema", "mytable", spark, "ENV")
 
     mock_source.read_table.assert_called_once_with(spark, schema="myschema", table_name="mytable")
 
@@ -153,6 +153,6 @@ def test_read_table_returns_converted_df():
          patch("ingestion_engine.extraction.postgres_reader.PostgresSource") as mock_cls, \
          patch("ingestion_engine.extraction.postgres_reader._convert_geometry_columns", return_value=expected):
         mock_cls.return_value = MagicMock()
-        result = read_table_from_postgres("s", "t", spark)
+        result = read_table_from_postgres("s", "t", spark, "ENV")
 
     assert result is expected

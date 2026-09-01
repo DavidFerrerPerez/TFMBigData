@@ -205,10 +205,3 @@ def main(environment: str):
     spark.stop()
 
     logging.info("Standardization pipeline completed successfully.")
-
-if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
-    if len(sys.argv) < 2:
-        raise Exception("Must provide an environment argument.")
-
-    main(environment=sys.argv[1].upper())
