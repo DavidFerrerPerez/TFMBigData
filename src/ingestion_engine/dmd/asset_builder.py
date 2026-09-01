@@ -1,5 +1,6 @@
 from typing import Any
 from shapely import force_2d
+from shapely.geometry import mapping
 from ingestion_engine.validation.null_validation import is_valid
 
 
@@ -80,10 +81,6 @@ def build_geometry(template_data: dict, asset_data, geometry_column: str) -> dic
 
     geom = asset_data[geometry_column]
 
-    if not is_valid(geom):
-        return None
+    geometry = mapping(force_2d(geom))
 
-    return {
-        "type": geometry_type,
-        "coordinates": list(geom.coords),
-    }
+    return {"type": geometry["type"], "coordinates": geometry["coordinates"]}

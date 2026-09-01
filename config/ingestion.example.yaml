@@ -1,13 +1,46 @@
-source:
-  schema: "xvdataset_assets"
+available_environments:
+  - <ENVIRONMENT_1>
+  - <ENVIRONMENT_2>
+  - <ENVIRONMENT_3>
+  - <ENVIRONMENT_4>
 
-tables:
-  - xv_pipe
+source:
+  db_schema: <SOURCE_DB_SCHEMA>
+
+templates:
+  - <TEMPLATE_NAME>
 
 storage:
-  container: xv-dataset
+  container: <STORAGE_CONTAINER>
 
   paths:
-    raw: pruebas/raw
-    unified: pruebas/unified
-    standard: pruebas/standard
+    raw: <RAW_PATH>
+    standard: <STANDARD_PATH>
+    quarantine: <QUARANTINE_PATH>
+
+data_quality:
+  core_fields:
+    - <CORE_FIELD_1>
+    - <CORE_FIELD_2>
+    - <CORE_FIELD_3>
+
+  non_null_fields:
+    - <NON_NULL_FIELD_1>
+    - <NON_NULL_FIELD_2>
+
+  id_column: <ID_COLUMN>
+  geometry_column: <GEOMETRY_COLUMN>
+
+anonymization:
+  text_columns:
+    - <TEXT_COLUMN_1>
+
+  geometry_columns:
+    - <GEOMETRY_COLUMN_1>
+
+main_hierarchy_parent: <MAIN_HIERARCHY_PARENT_ID>
+
+batch_size: <BATCH_SIZE>
+
+quarantine:
+  enabled: <true|false>

@@ -27,7 +27,7 @@ class DMDApi:
         Returns:
             requests.Response: The response object from the GET request.
         """
-        return requests.get(url, verify=False, headers=headers, params=params)
+        return requests.get(url, verify=True, headers=headers, params=params)
 
 
     def post_response(self, url, body, headers, params=None):
@@ -43,7 +43,7 @@ class DMDApi:
         Returns:
             requests.Response: The response object from the POST request.
         """
-        return requests.post(url, verify=False, params=params, headers=headers, data=body)
+        return requests.post(url, verify=True, params=params, headers=headers, data=body)
 
 
     def _get_templates(self):

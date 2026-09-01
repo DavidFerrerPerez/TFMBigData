@@ -24,12 +24,6 @@ class AnonymizationConfig(BaseModel):
 
 class QuarantineConfig(BaseModel):
     enabled: bool
-    format: str
-    include_source_record: bool
-    include_standard_payload: bool
-    retention_days: int
-    retry: dict
-    thresholds: dict
 
 class IngestionConfig(BaseModel):
     available_environments: list[str]

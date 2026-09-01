@@ -6,7 +6,7 @@ pipeline {
         // We perform checkout ourselves
         skipDefaultCheckout(true)
 
-        // Avoid two deployments running simultaneously
+        // Avoid two builds running simultaneously
         disableConcurrentBuilds()
     }
 
@@ -50,12 +50,12 @@ pipeline {
                     # Remove an old test container if one exists
                     docker rm -f "$TEST_CONTAINER" 2>/dev/null || true
 
-                    # Create the container without removing it immediately,
-                    # because we need to retrieve the JUnit XML afterwards
+                    # Override the ingestion entrypoint to execute pytest
                     docker create \
                         --name "$TEST_CONTAINER" \
+                        --entrypoint pdm \
                         ${IMAGE_NAME}:${IMAGE_TAG} \
-                        pdm run pytest tests \
+                        run pytest tests \
                         --junitxml=/tmp/test-results.xml
 
                     # Run tests but retain their exit code
@@ -130,41 +130,6 @@ pipeline {
 
                         docker push \
                             ${REGISTRY}/${REGISTRY_NAMESPACE}/${IMAGE_NAME}:latest
-                    '''
-                }
-            }
-        }
-
-
-        stage('Deploy') {
-
-            when {
-                branch 'main'
-            }
-
-            steps {
-                echo "Deploying ${REGISTRY}/${REGISTRY_NAMESPACE}/${IMAGE_NAME}:${IMAGE_TAG}"
-
-                withCredentials([
-                    file(
-                        credentialsId: 'ingestion-config-env',
-                        variable: 'CONFIG_ENV_FILE'
-                    )
-                ]) {
-
-                    sh '''
-                        # Create config.env temporarily for Docker Compose
-                        cp "$CONFIG_ENV_FILE" config.env
-
-                        # Always remove it afterwards
-                        trap 'rm -f config.env' EXIT
-
-                        INGESTION_IMAGE=${REGISTRY}/${REGISTRY_NAMESPACE}/${IMAGE_NAME}:${IMAGE_TAG} \
-                            docker compose \
-                            --env-file config.env \
-                            up -d \
-                            --no-build \
-                            app
                     '''
                 }
             }

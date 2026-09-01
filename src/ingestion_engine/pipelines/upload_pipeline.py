@@ -20,6 +20,7 @@ from ingestion_engine.quarantine.builders import build_quarantine_records_from_d
 from ingestion_engine.quarantine.error_codes import ErrorCode, FailureStage
 from ingestion_engine.quarantine.quarantine_service import QuarantineService
 from ingestion_engine.quarantine.models import QuarantineRecord
+from ingestion_engine.pipelines.errors import PipelineExecutionError
 
 
 def upload_asset_batch(asset_list: list[dict], template: str, dmd_api: DMDApi, quarantine_service: QuarantineService, run_id: str, environment: str) -> None:
@@ -71,17 +72,18 @@ def upload_template(spark: SedonaContext, blob_client: BlobClient, template: str
     logging.info(f"Uploading template {template}...")
 
     try:
-        df_assets = read_geoparquet_to_df(spark, blob_client, f"{ingestion_config.storage.paths.standard}/{template}.parquet")
+        df_assets = read_geoparquet_to_df(spark, blob_client, f"{ingestion_config.storage.paths.standard}/run_id={run_id}/{template}.parquet")
     except Exception as e:
-        logging.exception(f"Error reading template '{template}' from blob storage: {e}")
-        return
+        raise RuntimeError(f"Could not read Standard data for template '{template}'.") from e
 
     try:
         template_metadata = dmd_api.get_template_metadata(template)
-        template_schema = dmd_api.get_template_schema_by_id(template_metadata.get("id"))
+        template_schema = dmd_api.get_template_schema_by_id(template_metadata["id"])
     except Exception as e:
-        logging.exception(f"Error retrieving DMD schema for template '{template}': {e}")
-        return
+        raise RuntimeError(f"Could not retrieve DMD metadata for template '{template}'.") from e
+
+    if not isinstance(template_schema, list):
+        raise TypeError(f"Invalid DMD schema returned for template '{template}'.")
 
     template_characteristics_list = create_characteristics_list(template_schema)
 
@@ -138,17 +140,24 @@ def run_upload_pipeline(spark: SedonaContext, blob_client: BlobClient, ingestion
     """
     Execute the upload pipeline for every configured template.
     """
+    failures = []
+
     for template in ingestion_config.templates:
-        upload_template(spark, blob_client, template, ingestion_config, dmd_api, iotcore_api, quarantine_service, run_id, environment)
+        try:
+            upload_template(spark, blob_client, template, ingestion_config, dmd_api, iotcore_api, quarantine_service, run_id, environment)
+        except Exception as e:
+            logging.exception(f"Upload failed for template '{template}': {e}")
+            failures.append(f"template={template}: {e}")
+
+    if failures:
+        raise PipelineExecutionError("upload", failures)
 
 
-def main(environment: str) -> None:
+def main(environment: str, run_id: str) -> None:
     
     configure_logging()
 
     environment = environment.upper()
-
-    run_id = str(uuid4())
 
     logging.info(f"Starting the upload pipeline for environment '{environment}'... run_id: {run_id}")
 
@@ -186,7 +195,7 @@ def main(environment: str) -> None:
     spark = create_spark_session(app_name="ingestion-engine-upload")
 
     try:
-        run_upload_pipeline(spark, blob_client, ingestion_config, dmd_api, iotcore_api, quarantine_service, run_id, environment)
+        run_upload_pipeline(spark, blob_client, ingestion_config, dmd_api, iotcore_api, quarantine_service, run_id, environment, run_id)
     finally:
         spark.stop()
 
