@@ -5,11 +5,14 @@ import logging
 from sedona.spark import SedonaContext
 
 from ingestion_engine.extraction.postgres_reader import read_table_from_postgres
+from ingestion_engine.logging.config import configure_logging
+from ingestion_engine.spark.session import create_spark_session
 from ingestion_engine.storage.blob_client import BlobClient
 from ingestion_engine.storage.geoparquet_writer import write_df_to_geoparquet
 from ingestion_engine.configuration.loader import load_ingestion_config
+from ingestion_engine.configuration.validation import validate_blob_config
 
-def run_extraction_pipeline(extraction_config, table_mapping, spark, blob_client):
+def run_extraction_pipeline(extraction_config, table_mapping, spark, blob_client, environment):
 
     for template in extraction_config.templates:
     
@@ -21,7 +24,8 @@ def run_extraction_pipeline(extraction_config, table_mapping, spark, blob_client
                 df = read_table_from_postgres(
                     extraction_config.source.db_schema,
                     table,
-                    spark
+                    spark,
+                    environment
                 )
 
             except Exception as e:
@@ -41,39 +45,22 @@ def run_extraction_pipeline(extraction_config, table_mapping, spark, blob_client
         logging.info(f"Source tables for template '{template}' processed successfully.")
 
 
-def main():
+def main(environment: str):
 
     logging.info("Starting the extraction pipeline...")
 
     extraction_config = load_ingestion_config("config/ingestion.yaml")
 
-    config = (
-        SedonaContext.builder()
-        .appName("ingestion-engine")
-        .config(
-            "spark.jars.packages",
-            ",".join([
-                "org.postgresql:postgresql:42.7.13",
-                "org.apache.sedona:sedona-spark-3.5_2.12:1.7.1",
-                "org.datasyslab:geotools-wrapper:1.7.1-28.5",
-            ])
-        )
-        .getOrCreate()
-    )
+    spark = create_spark_session(app_name="ingestion-engine-extraction")
 
-    spark = SedonaContext.create(config)
-
-    spark.sparkContext.setLogLevel("ERROR")
-    logging.getLogger("azure.core.pipeline.policies.http_logging_policy").setLevel(logging.WARNING)
-    logging.getLogger("azure.storage").setLevel(logging.WARNING)
-    logging.getLogger("azure").setLevel(logging.WARNING)
+    configure_logging()
 
     connection_string = os.environ.get("AZURE_STORAGE_CONNECTION_STRING")
     container_name = extraction_config.storage.container if extraction_config.storage.container else None
 
-    if not connection_string or not container_name:
-        raise ValueError("Missing Azure Blob configuration variables: AZURE_STORAGE_CONNECTION_STRING / extraction_config.storage.container")
+    logging.info(f"Validating blob configuration for connection string and container name... Connection String: {connection_string}, Container Name: {container_name}")
 
+    validate_blob_config(connection_string, container_name)
 
     blob_client = BlobClient(
         connection_string=connection_string,
@@ -83,14 +70,9 @@ def main():
     with open("config/mappings/templates_mapping.json", "r") as file:
         table_mapping = json.load(file)
 
-    run_extraction_pipeline(extraction_config, table_mapping, spark, blob_client)
+    run_extraction_pipeline(extraction_config, table_mapping, spark, blob_client, environment)
 
     logging.info("Extraction pipeline completed successfully.")
 
     spark.stop()
-
-
-if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
-    main()
     

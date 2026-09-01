@@ -37,6 +37,25 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
+  airflow:
+    build:
+      context: ./airflow
+    container_name: ingestion-engine-airflow
+    command: standalone
+    ports:
+      - "8081:8080" 
+    env_file:
+      - config.env
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - ingestion-network
+
+networks:
+  ingestion-network:
+    name: ingestion-network
+
 volumes:
   venv_data:
   postgres_data:
