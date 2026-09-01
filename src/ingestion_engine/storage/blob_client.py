@@ -33,6 +33,19 @@ class BlobClient:
         with local_path.open("rb") as file:
             blob_client.upload_blob(file, overwrite=overwrite)
 
+    def upload_text(self, content: str, blob_path: str, overwrite: bool = True) -> None:
+        """
+        Uploads text content to Azure Blob Storage.
+        
+        Args:
+            content (str): The text content to upload.
+            blob_path (str): The path of the blob in Azure Blob Storage.
+            overwrite (bool, optional): Whether to overwrite the blob if it exists. Defaults to True.
+        """
+        
+        blob_client = self._container_client.get_blob_client(blob_path)
+        blob_client.upload_blob(content.encode("utf-8"), overwrite=overwrite)
+
 
     def delete_prefix(self, blob_prefix: str) -> None:
 

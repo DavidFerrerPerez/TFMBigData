@@ -2,6 +2,7 @@ import os
 import logging
 import json
 import sys
+from uuid import uuid4
 
 from sedona.spark import SedonaContext
 
@@ -13,13 +14,16 @@ from ingestion_engine.transformation.column_caster import transform_with_templat
 from ingestion_engine.storage.geoparquet_reader import read_geoparquet_to_df
 from ingestion_engine.transformation.name_validator import fill_name
 from ingestion_engine.validation.duplicates_validation import remove_duplicates
-from ingestion_engine.validation.null_validation import remove_mandatory_nulls
+from ingestion_engine.validation.null_validation import split_mandatory_nulls
 from ingestion_engine.transformation.anonymization import anonymize_dataframe
 from ingestion_engine.validation.complete_validation import validate_dataframe
 from ingestion_engine.storage.geoparquet_writer import write_df_to_geoparquet
 from ingestion_engine.logging.config import configure_logging
 from ingestion_engine.spark.session import create_spark_session
 from ingestion_engine.configuration.validation import validate_blob_config
+from ingestion_engine.quarantine.builders import build_quarantine_records_from_df
+from ingestion_engine.quarantine.error_codes import ErrorCode, FailureStage
+from ingestion_engine.quarantine.quarantine_service import QuarantineService
 
 
 def process_template_tables(spark, blob_client: BlobClient, ingestion_config, table_mapping, dmdapi, template: str) -> list:
@@ -63,7 +67,7 @@ def process_template_tables(spark, blob_client: BlobClient, ingestion_config, ta
     return source_tables
 
 
-def run_standardization_pipeline(spark, blob_client: BlobClient, ingestion_config, table_mapping, dmdapi):
+def run_standardization_pipeline(spark, blob_client: BlobClient, ingestion_config, table_mapping, dmdapi, quarantine_service: QuarantineService, run_id: str, environment: str):
     """
     Runs the standardization pipeline for the given ingestion configuration and table mapping.
 
@@ -78,6 +82,8 @@ def run_standardization_pipeline(spark, blob_client: BlobClient, ingestion_confi
     for template in ingestion_config.templates:
 
         logging.info(f"Processing template: {template}")
+
+        quarantine_records = []
 
         # 1. Casting tables to company standard schema
         try:
@@ -104,13 +110,39 @@ def run_standardization_pipeline(spark, blob_client: BlobClient, ingestion_confi
         try:
             df_no_duplicates = remove_duplicates(df_with_name, ingestion_config.data_quality.core_fields)
 
-            df_no_nulls = remove_mandatory_nulls(df_no_duplicates, ingestion_config)
+            df_no_nulls, rejected_nulls_df = split_mandatory_nulls(df_no_duplicates, ingestion_config)
+
+            if not rejected_nulls_df.isEmpty():
+                print(f"Rejected {rejected_nulls_df.count()} rows due to mandatory nulls for template {template}.")
+                records = build_quarantine_records_from_df(
+                    rejected_nulls_df,
+                    run_id=run_id,
+                    environment=environment,
+                    template=template,
+                    stage=FailureStage.VALIDATION,
+                    error_code=ErrorCode.REQUIRED_FIELD_MISSING,
+                    error_message="Mandatory field is null.",
+                )
+                quarantine_records.extend(records)
 
             df_anonymized = anonymize_dataframe(df_no_nulls, ingestion_config)
 
-            validate_dataframe(df_anonymized, ingestion_config)
+            valid_df, rejected_validation_df = validate_dataframe(df_anonymized, ingestion_config)
 
-            logging.debug(f"Standardized DataFrame for template {template} validated successfully: size is {df_anonymized.count()} rows.")
+            if not rejected_validation_df.isEmpty():
+                print(f"Rejected {rejected_validation_df.count()} rows due to validation errors for template {template}.")
+                records = build_quarantine_records_from_df(
+                    rejected_validation_df,
+                    run_id=run_id,
+                    environment=environment,
+                    template=template, 
+                    stage=FailureStage.VALIDATION,
+                    error_code=ErrorCode.INVALID_TYPE,
+                    error_message="Asset failed final validation.",
+                )
+                quarantine_records.extend(records)
+
+            logging.debug(f"Standardized DataFrame for template {template} validated successfully: size is {valid_df.count()} rows.")
         except Exception as e:
             logging.error(f"Error during validation of template {template}: {e}")
             continue
@@ -122,6 +154,11 @@ def run_standardization_pipeline(spark, blob_client: BlobClient, ingestion_confi
             logging.error(f"Error writing standardized DataFrame for template {template}: {e}")
             continue
 
+        finally:
+            if quarantine_records:
+                quarantine_service.write(quarantine_records)
+                logging.info(f"Quarantine records for template {template} written successfully to blob storage.")
+
         logging.info(f"Standardized DataFrame for template {template} written successfully to blob storage.")
 
 
@@ -130,10 +167,12 @@ def main(environment: str):
 
     ingestion_config = load_ingestion_config("config/ingestion.yaml")
 
+    run_id= str(uuid4())
+
     if environment not in ingestion_config.available_environments:
         raise ValueError(f"Invalid environment '{environment}'. Available environments: {ingestion_config.available_environments}")
 
-    logging.info("Starting the standardization pipeline...")
+    logging.info(f"Starting the standardization pipeline for environment '{environment}'... run_id: {run_id}")
 
     configure_logging()
 
@@ -156,7 +195,12 @@ def main(environment: str):
         container_name=container_name,
     )
 
-    run_standardization_pipeline(spark, blob_client, ingestion_config, table_mapping, dmdapi)
+    quarantine_service = QuarantineService(
+        blob_client=blob_client,
+        base_path=ingestion_config.storage.paths.quarantine,
+    )
+
+    run_standardization_pipeline(spark, blob_client, ingestion_config, table_mapping, dmdapi, quarantine_service, run_id, environment)
 
     spark.stop()
 

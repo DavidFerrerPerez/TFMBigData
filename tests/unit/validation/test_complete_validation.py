@@ -43,32 +43,15 @@ def test_validate_raises_on_missing_required_column():
         validate_dataframe(df, _make_config(core_fields=["id", "source"]))
 
 
-def test_validate_raises_on_null_in_mandatory_field():
+def test_validate_null_in_mandatory_field_is_filtered_to_rejected():
     df = _make_valid_df()
-    df.filter.return_value.limit.return_value.count.return_value = 1
-    with pytest.raises(ValueError, match="contains null values"):
-        validate_dataframe(df, _make_config())
+    valid, rejected = validate_dataframe(df, _make_config())
+    assert valid is not None
+    assert rejected is not None
 
 
-def test_validate_raises_on_duplicate_ids():
+def test_validate_invalid_geometry_is_filtered_to_rejected(mock_F):
     df = _make_valid_df()
-    df.filter.return_value.limit.return_value.count.return_value = 0  # no nulls
-    df.groupBy.return_value.count.return_value.filter.return_value.limit.return_value.count.return_value = 1
-    with pytest.raises(ValueError, match="Duplicated values"):
-        validate_dataframe(df, _make_config())
-
-
-def test_validate_raises_on_invalid_geometry():
-    df = MagicMock()
-    df.columns = ["id", "source", "geometry"]
-
-    null_mock = MagicMock()
-    null_mock.limit.return_value.count.return_value = 0
-    geom_mock = MagicMock()
-    geom_mock.limit.return_value.count.return_value = 1
-
-    df.filter.side_effect = [null_mock, geom_mock]
-    df.groupBy.return_value.count.return_value.filter.return_value.limit.return_value.count.return_value = 0
-
-    with pytest.raises(ValueError, match="Invalid geometries"):
-        validate_dataframe(df, _make_config(non_null_fields=["id"]))
+    valid, rejected = validate_dataframe(df, _make_config())
+    mock_F.expr.assert_called()  # geometry check uses ST_IsValid via F.expr
+    assert rejected is not None

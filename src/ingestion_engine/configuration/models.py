@@ -12,6 +12,7 @@ class SourceConfig(BaseModel):
 class BlobPathConfig(BaseModel):
     raw: str
     standard: str
+    quarantine: str
 
 class StorageConfig(BaseModel):
     container: str
@@ -20,6 +21,15 @@ class StorageConfig(BaseModel):
 class AnonymizationConfig(BaseModel):
     text_columns: list[str]
     geometry_columns: list[str]
+
+class QuarantineConfig(BaseModel):
+    enabled: bool
+    format: str
+    include_source_record: bool
+    include_standard_payload: bool
+    retention_days: int
+    retry: dict
+    thresholds: dict
 
 class IngestionConfig(BaseModel):
     available_environments: list[str]
@@ -30,3 +40,4 @@ class IngestionConfig(BaseModel):
     anonymization: AnonymizationConfig
     main_hierarchy_parent: int
     batch_size: int
+    quarantine: QuarantineConfig

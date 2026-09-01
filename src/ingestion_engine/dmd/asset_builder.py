@@ -78,12 +78,12 @@ def build_geometry(template_data: dict, asset_data, geometry_column: str) -> dic
     if geometry_column not in asset_fields:
         return None
 
-    coordinates = list(asset_data[geometry_column].coords)
+    geom = asset_data[geometry_column]
 
-    if not is_valid(coordinates):
+    if not is_valid(geom):
         return None
 
     return {
         "type": geometry_type,
-        "coordinates": coordinates,
+        "coordinates": list(geom.coords),
     }
