@@ -3,11 +3,10 @@ pipeline {
     agent any
 
     options {
-        // We perform checkout ourselves
         skipDefaultCheckout(true)
-
-        // Avoid two deployments running simultaneously
         disableConcurrentBuilds()
+        timestamps()
+        buildDiscarder(logRotator(numToKeepStr: '20'))
     }
 
     environment {
@@ -27,7 +26,6 @@ pipeline {
             }
         }
 
-
         stage('Build') {
             steps {
                 echo "Branch: ${BRANCH_NAME}"
@@ -35,49 +33,43 @@ pipeline {
 
                 sh '''
                     docker build \
-                        -t ${IMAGE_NAME}:${IMAGE_TAG} \
+                        --tag "${IMAGE_NAME}:${IMAGE_TAG}" \
                         .
                 '''
             }
         }
-
 
         stage('Test') {
             steps {
                 sh '''
                     TEST_CONTAINER="${IMAGE_NAME}-test-${BUILD_NUMBER}"
 
-                    # Remove an old test container if one exists
-                    docker rm -f "$TEST_CONTAINER" 2>/dev/null || true
+                    cleanup() {
+                        docker rm -f "$TEST_CONTAINER" >/dev/null 2>&1 || true
+                    }
 
-                    # Create the container without removing it immediately,
-                    # because we need to retrieve the JUnit XML afterwards
+                    trap cleanup EXIT
+                    cleanup
+
+                    mkdir -p reports
+
                     docker create \
                         --name "$TEST_CONTAINER" \
-                        ${IMAGE_NAME}:${IMAGE_TAG} \
-                        pdm run pytest tests \
+                        --entrypoint pdm \
+                        "${IMAGE_NAME}:${IMAGE_TAG}" \
+                        run pytest tests \
                         --junitxml=/tmp/test-results.xml
 
-                    # Run tests but retain their exit code
                     set +e
-
                     docker start -a "$TEST_CONTAINER"
                     TEST_EXIT_CODE=$?
-
                     set -e
-
-                    # Copy the test report into the Jenkins workspace
-                    mkdir -p reports
 
                     docker cp \
                         "$TEST_CONTAINER:/tmp/test-results.xml" \
                         reports/test-results.xml || true
 
-                    # Remove temporary container
-                    docker rm "$TEST_CONTAINER"
-
-                    # Make the pipeline fail if pytest failed
-                    exit $TEST_EXIT_CODE
+                    exit "$TEST_EXIT_CODE"
                 '''
             }
 
@@ -87,13 +79,17 @@ pipeline {
                         allowEmptyResults: true,
                         testResults: 'reports/test-results.xml'
                     )
+
+                    sh '''
+                        docker rm -f \
+                            "${IMAGE_NAME}-test-${BUILD_NUMBER}" \
+                            >/dev/null 2>&1 || true
+                    '''
                 }
             }
         }
 
-
         stage('Publish') {
-
             when {
                 branch 'main'
             }
@@ -108,69 +104,35 @@ pipeline {
                         passwordVariable: 'REGISTRY_TOKEN'
                     )
                 ]) {
-
                     sh '''
-                        echo "$REGISTRY_TOKEN" | \
-                            docker login "$REGISTRY" \
+                        VERSIONED_IMAGE="${REGISTRY}/${REGISTRY_NAMESPACE}/${IMAGE_NAME}:${IMAGE_TAG}"
+                        LATEST_IMAGE="${REGISTRY}/${REGISTRY_NAMESPACE}/${IMAGE_NAME}:latest"
+
+                        logout_registry() {
+                            docker logout "$REGISTRY" >/dev/null 2>&1 || true
+                        }
+
+                        trap logout_registry EXIT
+
+                        echo "$REGISTRY_TOKEN" | docker login "$REGISTRY" \
                             --username "$REGISTRY_USER" \
                             --password-stdin
 
-                        # Build-number version
                         docker tag \
-                            ${IMAGE_NAME}:${IMAGE_TAG} \
-                            ${REGISTRY}/${REGISTRY_NAMESPACE}/${IMAGE_NAME}:${IMAGE_TAG}
+                            "${IMAGE_NAME}:${IMAGE_TAG}" \
+                            "$VERSIONED_IMAGE"
 
-                        # Latest version
                         docker tag \
-                            ${IMAGE_NAME}:${IMAGE_TAG} \
-                            ${REGISTRY}/${REGISTRY_NAMESPACE}/${IMAGE_NAME}:latest
+                            "${IMAGE_NAME}:${IMAGE_TAG}" \
+                            "$LATEST_IMAGE"
 
-                        docker push \
-                            ${REGISTRY}/${REGISTRY_NAMESPACE}/${IMAGE_NAME}:${IMAGE_TAG}
-
-                        docker push \
-                            ${REGISTRY}/${REGISTRY_NAMESPACE}/${IMAGE_NAME}:latest
-                    '''
-                }
-            }
-        }
-
-
-        stage('Deploy') {
-
-            when {
-                branch 'main'
-            }
-
-            steps {
-                echo "Deploying ${REGISTRY}/${REGISTRY_NAMESPACE}/${IMAGE_NAME}:${IMAGE_TAG}"
-
-                withCredentials([
-                    file(
-                        credentialsId: 'ingestion-config-env',
-                        variable: 'CONFIG_ENV_FILE'
-                    )
-                ]) {
-
-                    sh '''
-                        # Create config.env temporarily for Docker Compose
-                        cp "$CONFIG_ENV_FILE" config.env
-
-                        # Always remove it afterwards
-                        trap 'rm -f config.env' EXIT
-
-                        INGESTION_IMAGE=${REGISTRY}/${REGISTRY_NAMESPACE}/${IMAGE_NAME}:${IMAGE_TAG} \
-                            docker compose \
-                            --env-file config.env \
-                            up -d \
-                            --no-build \
-                            app
+                        docker push "$VERSIONED_IMAGE"
+                        docker push "$LATEST_IMAGE"
                     '''
                 }
             }
         }
     }
-
 
     post {
 
@@ -180,6 +142,10 @@ pipeline {
 
         failure {
             echo "Pipeline ${BUILD_NUMBER} for branch ${BRANCH_NAME} failed."
+        }
+
+        aborted {
+            echo "Pipeline ${BUILD_NUMBER} for branch ${BRANCH_NAME} was aborted."
         }
     }
 }

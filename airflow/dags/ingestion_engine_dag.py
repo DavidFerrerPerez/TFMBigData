@@ -1,40 +1,62 @@
 import os
 
 import pendulum
+from airflow.exceptions import AirflowException
 from airflow.providers.docker.operators.docker import DockerOperator
-from airflow.sdk import DAG
+from airflow.sdk import DAG, task
 
 
-IMAGE = "ingestion-engine-david-ferrer:latest"
-ENVIRONMENT = "DEV"
+ENVIRONMENT = os.getenv("INGESTION_ENVIRONMENT", "DEV").upper()
+IMAGE = os.getenv("INGESTION_IMAGE", "")
+DOCKER_REGISTRY_CONN_ID = os.getenv("DOCKER_REGISTRY_CONN_ID") or None
 
-COMMON_ENVIRONMENT = {
-    # PostgreSQL
-    f"POSTGRES_HOST_{ENVIRONMENT}": os.environ[f"POSTGRES_HOST_{ENVIRONMENT}"],
-    f"POSTGRES_PORT_{ENVIRONMENT}": os.environ[f"POSTGRES_PORT_{ENVIRONMENT}"],
-    f"POSTGRES_DATABASE_{ENVIRONMENT}": os.environ[f"POSTGRES_DATABASE_{ENVIRONMENT}"],
-    f"POSTGRES_USER_{ENVIRONMENT}": os.environ[f"POSTGRES_USER_{ENVIRONMENT}"],
-    f"POSTGRES_PASSWORD_{ENVIRONMENT}": os.environ[f"POSTGRES_PASSWORD_{ENVIRONMENT}"],
+REQUIRED_VARIABLES = [
+    "INGESTION_IMAGE",
+    f"POSTGRES_HOST_{ENVIRONMENT}",
+    f"POSTGRES_PORT_{ENVIRONMENT}",
+    f"POSTGRES_DATABASE_{ENVIRONMENT}",
+    f"POSTGRES_USER_{ENVIRONMENT}",
+    f"POSTGRES_PASSWORD_{ENVIRONMENT}",
+    "AZURE_STORAGE_CONNECTION_STRING",
+    "AZURE_STORAGE_ACCOUNT_NAME",
+    "AZURE_STORAGE_ACCOUNT_KEY",
+    f"DMD_API_URL_{ENVIRONMENT}",
+    f"DMD_API_TOKEN_{ENVIRONMENT}",
+    f"IOTCORE_API_URL_{ENVIRONMENT}",
+    f"IOTCORE_API_TOKEN_{ENVIRONMENT}",
+    f"IOTCORE_API_DRIVER_{ENVIRONMENT}",
+    "ANONYMIZATION_SALT",
+    "ANONYMIZATION_OFFSET_X",
+    "ANONYMIZATION_OFFSET_Y",
+]
 
-    # Azure Blob Storage
-    "AZURE_STORAGE_CONNECTION_STRING": os.environ["AZURE_STORAGE_CONNECTION_STRING"],
-    "AZURE_STORAGE_ACCOUNT_NAME": os.environ["AZURE_STORAGE_ACCOUNT_NAME"],
-    "AZURE_STORAGE_ACCOUNT_KEY": os.environ["AZURE_STORAGE_ACCOUNT_KEY"],
-
-    # DMD
-    f"DMD_API_URL_{ENVIRONMENT}": os.environ[f"DMD_API_URL_{ENVIRONMENT}"],
-    f"DMD_API_TOKEN_{ENVIRONMENT}": os.environ[f"DMD_API_TOKEN_{ENVIRONMENT}"],
-
-    # IoT Core
-    f"IOTCORE_API_URL_{ENVIRONMENT}": os.environ[f"IOTCORE_API_URL_{ENVIRONMENT}"],
-    f"IOTCORE_API_TOKEN_{ENVIRONMENT}": os.environ[f"IOTCORE_API_TOKEN_{ENVIRONMENT}"],
-    f"IOTCORE_API_DRIVER_{ENVIRONMENT}": os.environ[f"IOTCORE_API_DRIVER_{ENVIRONMENT}"],
-
-    # Anonymization
-    "ANONYMIZATION_SALT": os.environ["ANONYMIZATION_SALT"],
-    "ANONYMIZATION_OFFSET_X": os.environ["ANONYMIZATION_OFFSET_X"],
-    "ANONYMIZATION_OFFSET_Y": os.environ["ANONYMIZATION_OFFSET_Y"],
+PRIVATE_ENVIRONMENT = {
+    variable: os.getenv(variable, "")
+    for variable in REQUIRED_VARIABLES
+    if variable != "INGESTION_IMAGE"
 }
+
+
+@task
+def validate_configuration() -> None:
+    missing = [variable for variable in REQUIRED_VARIABLES if not os.getenv(variable)]
+    if missing:
+        raise AirflowException(f"Missing required environment variables: {', '.join(missing)}")
+
+
+def create_pipeline_task(stage: str) -> DockerOperator:
+    return DockerOperator(
+        task_id=stage,
+        image=IMAGE or "ingestion-image-not-configured",
+        command=f'run --stage {stage} --environment {ENVIRONMENT} --run-id "{{{{ run_id }}}}"',
+        docker_url="unix://var/run/docker.sock",
+        docker_conn_id=DOCKER_REGISTRY_CONN_ID,
+        network_mode="ingestion-network",
+        private_environment=PRIVATE_ENVIRONMENT,
+        force_pull=True,
+        auto_remove="success",
+        mount_tmp_dir=False,
+    )
 
 
 with DAG(
@@ -42,39 +64,11 @@ with DAG(
     start_date=pendulum.datetime(2026, 9, 1, tz="Europe/Madrid"),
     schedule=None,
     catchup=False,
+    tags=["ingestion"],
 ) as dag:
+    validate = validate_configuration()
+    extract = create_pipeline_task("extract")
+    standardize = create_pipeline_task("standardize")
+    upload = create_pipeline_task("upload")
 
-    extract = DockerOperator(
-        task_id="extract",
-        image=IMAGE,
-        command=f"run --stage extract --environment {ENVIRONMENT}",
-        docker_url="unix://var/run/docker.sock",
-        network_mode="ingestion-network",
-        environment=COMMON_ENVIRONMENT,
-        auto_remove="success",
-        mount_tmp_dir=False,
-    )
-
-    standardize = DockerOperator(
-        task_id="standardize",
-        image=IMAGE,
-        command=f"run --stage standardize --environment {ENVIRONMENT}",
-        docker_url="unix://var/run/docker.sock",
-        network_mode="ingestion-network",
-        environment=COMMON_ENVIRONMENT,
-        auto_remove="success",
-        mount_tmp_dir=False,
-    )
-
-    upload = DockerOperator(
-        task_id="upload",
-        image=IMAGE,
-        command=f"run --stage upload --environment {ENVIRONMENT}",
-        docker_url="unix://var/run/docker.sock",
-        network_mode="ingestion-network",
-        environment=COMMON_ENVIRONMENT,
-        auto_remove="success",
-        mount_tmp_dir=False,
-    )
-
-    extract >> standardize >> upload
+    validate >> extract >> standardize >> upload

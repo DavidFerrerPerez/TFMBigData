@@ -25,7 +25,7 @@ class IOTCoreAPI:
         Returns:
             requests.Response: The response object from the GET request.
         """
-        return requests.get(url, verify=False, headers=headers, params=params)
+        return requests.get(url, verify=True, headers=headers, params=params)
 
     
     def _catalogue_tags(self):

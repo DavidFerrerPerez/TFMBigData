@@ -1,49 +1,14 @@
 name: ingestion-engine
 
 services:
-  app:
-    container_name: ingestion-engine-app
-    image: ${INGESTION_IMAGE:-ingestion-engine-david-ferrer:latest}
-    build:
-      context: .
-      dockerfile: Dockerfile
-      args:
-        JFROG_XYLEM_PYPI_USER: "${JFROG_XYLEM_PYPI_USER}"
-        JFROG_XYLEM_PYPI_TOKEN: "${JFROG_XYLEM_PYPI_TOKEN}"
-        NEXUS_PYPI_USER: "${NEXUS_PYPI_USER}"
-        NEXUS_PYPI_TOKEN: "${NEXUS_PYPI_TOKEN}"
-    environment:
-        JFROG_XYLEM_PYPI_USER: "${JFROG_XYLEM_PYPI_USER}"
-        JFROG_XYLEM_PYPI_TOKEN: "${JFROG_XYLEM_PYPI_TOKEN}"
-        NEXUS_PYPI_USER: "${NEXUS_PYPI_USER}"
-        NEXUS_PYPI_TOKEN: "${NEXUS_PYPI_TOKEN}"
-    stdin_open: true
-    tty: true
-    volumes:
-      - .:/app
-      - /app/_template_core/docker/scripts
-    env_file:
-      - config.env
-  
-  postgres:
-    image: postgis/postgis:16-3.5
-    container_name: ingestion-engine-postgres
-    environment:
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: admin
-      POSTGRES_DB: water_management
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-
   airflow:
     build:
       context: ./airflow
+      dockerfile: Dockerfile
     container_name: ingestion-engine-airflow
     command: standalone
     ports:
-      - "8081:8080" 
+      - "8081:8080"
     env_file:
       - config.env
     volumes:
@@ -51,11 +16,8 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     networks:
       - ingestion-network
+    restart: unless-stopped
 
 networks:
   ingestion-network:
     name: ingestion-network
-
-volumes:
-  venv_data:
-  postgres_data:

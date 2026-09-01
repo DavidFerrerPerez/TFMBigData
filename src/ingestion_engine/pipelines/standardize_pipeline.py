@@ -22,11 +22,12 @@ from ingestion_engine.logging.config import configure_logging
 from ingestion_engine.spark.session import create_spark_session
 from ingestion_engine.configuration.validation import validate_blob_config
 from ingestion_engine.quarantine.builders import build_quarantine_records_from_df
+from ingestion_engine.pipelines.errors import PipelineExecutionError
 from ingestion_engine.quarantine.error_codes import ErrorCode, FailureStage
 from ingestion_engine.quarantine.quarantine_service import QuarantineService
 
 
-def process_template_tables(spark, blob_client: BlobClient, ingestion_config, table_mapping, dmdapi, template: str) -> list:
+def process_template_tables(spark, blob_client: BlobClient, ingestion_config, table_mapping, dmdapi, template: str, run_id: str) -> list:
     """
     Process the tables for a given template.
 
@@ -42,17 +43,25 @@ def process_template_tables(spark, blob_client: BlobClient, ingestion_config, ta
         list: A list of DataFrames translated to company standard schema for the template.
     """
 
+    tables = table_mapping.get(template)
+
+    if not tables:
+        raise ValueError(f"No source tables configured for template '{template}'.")
+
     source_tables = []
 
     template_id = dmdapi.get_template_metadata(template).get("id")
     template_schema = dmdapi.get_template_schema_by_id(template_id)
+
+    if not isinstance(template_schema, list):
+        raise TypeError(f"Invalid DMD schema returned for template '{template}'.")
 
     for table in table_mapping[template]:
 
         logging.debug(f"Reading table {table} from blob storage for template {template}.")
 
         try:
-            df = read_geoparquet_to_df(spark, blob_client, f"{ingestion_config.storage.paths.raw}/{table}.parquet")
+            df = read_geoparquet_to_df(spark, blob_client, f"{ingestion_config.storage.paths.raw}/run_id={run_id}/{table}.parquet")
 
         except Exception as e:
             logging.error(f"Error reading table {table} from blob storage: {e}")
@@ -63,6 +72,9 @@ def process_template_tables(spark, blob_client: BlobClient, ingestion_config, ta
         source_tables.append(transformed_df)
 
         logging.debug(f"Table {table} for template {template} read and transformed successfully: size is {transformed_df.count()} rows.")
+
+    if not source_tables:
+        raise ValueError(f"No source DataFrames were produced for template '{template}'.")
 
     return source_tables
 
@@ -76,98 +88,87 @@ def run_standardization_pipeline(spark, blob_client: BlobClient, ingestion_confi
         blob_client (BlobClient): The blob client for accessing storage.
         ingestion_config: The ingestion configuration.
         table_mapping: The table mapping for templates.
+        run_id (str): The unique identifier for the ingestion run.
         environment (str, optional): The environment (default is "DEV").
     """
 
+    failures = []
+
     for template in ingestion_config.templates:
-
-        logging.info(f"Processing template: {template}")
-
+        logging.info(f"Standardizing template '{template}'.")
         quarantine_records = []
 
-        # 1. Casting tables to company standard schema
         try:
-            source_tables = process_template_tables(spark, blob_client, ingestion_config, table_mapping, dmdapi, template)
-        except Exception as e:
-            logging.error(f"Error processing template source tables for {template}: {e}")
-            continue
+            source_tables = process_template_tables(spark, blob_client, ingestion_config, table_mapping, dmdapi, template, run_id)
 
-        # 2. Unifying tables
-        try:
             unified_df = unify_tables(spark, source_tables)
-            logging.debug(f"Unified DataFrame for template {template}: size is {unified_df.count()} rows.")
-        except Exception as e:
-            logging.error(f"Error unifying tables for template {template}: {e}")
-            continue
-
-        # 3. Filling 'name' column and validating the DataFrame
-        try:
             df_with_name = fill_name(unified_df)
-        except Exception as e:
-            logging.error(f"Error filling 'name' column for template {template}: {e}")
-            continue
-
-        try:
             df_no_duplicates = remove_duplicates(df_with_name, ingestion_config.data_quality.core_fields)
-
             df_no_nulls, rejected_nulls_df = split_mandatory_nulls(df_no_duplicates, ingestion_config)
 
             if not rejected_nulls_df.isEmpty():
-                print(f"Rejected {rejected_nulls_df.count()} rows due to mandatory nulls for template {template}.")
-                records = build_quarantine_records_from_df(
-                    rejected_nulls_df,
-                    run_id=run_id,
-                    environment=environment,
-                    template=template,
-                    stage=FailureStage.VALIDATION,
-                    error_code=ErrorCode.REQUIRED_FIELD_MISSING,
-                    error_message="Mandatory field is null.",
+                rejected_count = rejected_nulls_df.count()
+                logging.warning(f"Rejected {rejected_count} rows with mandatory nulls for template '{template}'.")
+
+                quarantine_records.extend(
+                    build_quarantine_records_from_df(
+                        rejected_nulls_df,
+                        run_id=run_id,
+                        environment=environment,
+                        template=template,
+                        stage=FailureStage.VALIDATION,
+                        error_code=ErrorCode.REQUIRED_FIELD_MISSING,
+                        error_message="Mandatory field is null.",
+                    )
                 )
-                quarantine_records.extend(records)
 
             df_anonymized = anonymize_dataframe(df_no_nulls, ingestion_config)
-
             valid_df, rejected_validation_df = validate_dataframe(df_anonymized, ingestion_config)
 
             if not rejected_validation_df.isEmpty():
-                print(f"Rejected {rejected_validation_df.count()} rows due to validation errors for template {template}.")
-                records = build_quarantine_records_from_df(
-                    rejected_validation_df,
-                    run_id=run_id,
-                    environment=environment,
-                    template=template, 
-                    stage=FailureStage.VALIDATION,
-                    error_code=ErrorCode.INVALID_TYPE,
-                    error_message="Asset failed final validation.",
+                rejected_count = rejected_validation_df.count()
+                logging.warning(f"Rejected {rejected_count} rows during final validation for template '{template}'.")
+
+                quarantine_records.extend(
+                    build_quarantine_records_from_df(
+                        rejected_validation_df,
+                        run_id=run_id,
+                        environment=environment,
+                        template=template,
+                        stage=FailureStage.VALIDATION,
+                        error_code=ErrorCode.INVALID_TYPE,
+                        error_message="Asset failed final validation.",
+                    )
                 )
-                quarantine_records.extend(records)
 
-            logging.debug(f"Standardized DataFrame for template {template} validated successfully: size is {valid_df.count()} rows.")
-        except Exception as e:
-            logging.error(f"Error during validation of template {template}: {e}")
-            continue
+            write_df_to_geoparquet(
+                valid_df,
+                blob_client,
+                f"{ingestion_config.storage.paths.standard}/{template}.parquet",
+            )
 
-        # 4. Writing the standardized DataFrame to blob storage
-        try:
-            write_df_to_geoparquet(df_anonymized, blob_client, f"{ingestion_config.storage.paths.standard}/{template}.parquet")
+            logging.info(f"Template '{template}' standardized successfully.")
+
         except Exception as e:
-            logging.error(f"Error writing standardized DataFrame for template {template}: {e}")
-            continue
+            logging.exception(f"Standardization failed for template '{template}'.")
+            failures.append(f"template={template}: {e}")
 
         finally:
             if quarantine_records:
-                quarantine_service.write(quarantine_records)
-                logging.info(f"Quarantine records for template {template} written successfully to blob storage.")
+                try:
+                    quarantine_service.write(quarantine_records)
+                    logging.info(f"Wrote {len(quarantine_records)} quarantine records for template '{template}'.")
+                except Exception as e:
+                    logging.exception(f"Could not persist quarantine records for template '{template}'.")
+                    failures.append(f"template={template}, quarantine: {e}")
 
-        logging.info(f"Standardized DataFrame for template {template} written successfully to blob storage.")
+    if failures:
+        raise PipelineExecutionError("standardization", failures)
 
 
-
-def main(environment: str):
+def main(environment: str, run_id: str):
 
     ingestion_config = load_ingestion_config("config/ingestion.yaml")
-
-    run_id= str(uuid4())
 
     if environment not in ingestion_config.available_environments:
         raise ValueError(f"Invalid environment '{environment}'. Available environments: {ingestion_config.available_environments}")
@@ -200,8 +201,9 @@ def main(environment: str):
         base_path=ingestion_config.storage.paths.quarantine,
     )
 
-    run_standardization_pipeline(spark, blob_client, ingestion_config, table_mapping, dmdapi, quarantine_service, run_id, environment)
-
-    spark.stop()
+    try:
+        run_standardization_pipeline(spark, blob_client, ingestion_config, table_mapping, dmdapi, quarantine_service, run_id, environment)
+    finally:
+        spark.stop()
 
     logging.info("Standardization pipeline completed successfully.")
