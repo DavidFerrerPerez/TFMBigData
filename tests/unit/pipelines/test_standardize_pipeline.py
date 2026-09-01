@@ -129,7 +129,7 @@ def test_process_template_tables_empty_table_list_returns_empty(mock_read, mock_
 @patch("ingestion_engine.pipelines.standardize_pipeline.write_df_to_geoparquet")
 @patch("ingestion_engine.pipelines.standardize_pipeline.validate_dataframe")
 @patch("ingestion_engine.pipelines.standardize_pipeline.anonymize_dataframe")
-@patch("ingestion_engine.pipelines.standardize_pipeline.remove_mandatory_nulls")
+@patch("ingestion_engine.pipelines.standardize_pipeline.split_mandatory_nulls")
 @patch("ingestion_engine.pipelines.standardize_pipeline.remove_duplicates")
 @patch("ingestion_engine.pipelines.standardize_pipeline.fill_name")
 @patch("ingestion_engine.pipelines.standardize_pipeline.unify_tables")
@@ -145,10 +145,11 @@ def test_run_pipeline_processes_all_templates(
     mock_unify.return_value = MagicMock()
     mock_fill.return_value = MagicMock()
     mock_dedup.return_value = MagicMock()
-    mock_nulls.return_value = MagicMock()
+    mock_nulls.return_value = (MagicMock(), MagicMock())
     mock_anon.return_value = MagicMock()
+    mock_validate.return_value = (MagicMock(), MagicMock())
 
-    run_standardization_pipeline(MagicMock(), MagicMock(), ingestion_config, {}, MagicMock())
+    run_standardization_pipeline(MagicMock(), MagicMock(), ingestion_config, {}, MagicMock(), MagicMock(), "run-1", "dev")
 
     assert mock_process.call_count == 2
     assert mock_unify.call_count == 2
@@ -158,7 +159,7 @@ def test_run_pipeline_processes_all_templates(
 @patch("ingestion_engine.pipelines.standardize_pipeline.write_df_to_geoparquet")
 @patch("ingestion_engine.pipelines.standardize_pipeline.validate_dataframe")
 @patch("ingestion_engine.pipelines.standardize_pipeline.anonymize_dataframe")
-@patch("ingestion_engine.pipelines.standardize_pipeline.remove_mandatory_nulls")
+@patch("ingestion_engine.pipelines.standardize_pipeline.split_mandatory_nulls")
 @patch("ingestion_engine.pipelines.standardize_pipeline.remove_duplicates")
 @patch("ingestion_engine.pipelines.standardize_pipeline.fill_name")
 @patch("ingestion_engine.pipelines.standardize_pipeline.unify_tables")
@@ -171,7 +172,7 @@ def test_run_pipeline_skips_template_on_process_error(
     ingestion_config.templates = ["template1"]
     mock_process.side_effect = Exception("DMD unreachable")
 
-    run_standardization_pipeline(MagicMock(), MagicMock(), ingestion_config, {}, MagicMock())
+    run_standardization_pipeline(MagicMock(), MagicMock(), ingestion_config, {}, MagicMock(), MagicMock(), "run-1", "dev")
 
     mock_write.assert_not_called()
 
@@ -179,7 +180,7 @@ def test_run_pipeline_skips_template_on_process_error(
 @patch("ingestion_engine.pipelines.standardize_pipeline.write_df_to_geoparquet")
 @patch("ingestion_engine.pipelines.standardize_pipeline.validate_dataframe")
 @patch("ingestion_engine.pipelines.standardize_pipeline.anonymize_dataframe")
-@patch("ingestion_engine.pipelines.standardize_pipeline.remove_mandatory_nulls")
+@patch("ingestion_engine.pipelines.standardize_pipeline.split_mandatory_nulls")
 @patch("ingestion_engine.pipelines.standardize_pipeline.remove_duplicates")
 @patch("ingestion_engine.pipelines.standardize_pipeline.fill_name")
 @patch("ingestion_engine.pipelines.standardize_pipeline.unify_tables")
@@ -195,11 +196,11 @@ def test_run_pipeline_skips_template_on_validation_error(
     mock_unify.return_value = MagicMock()
     mock_fill.return_value = MagicMock()
     mock_dedup.return_value = MagicMock()
-    mock_nulls.return_value = MagicMock()
+    mock_nulls.return_value = (MagicMock(), MagicMock())
     mock_anon.return_value = MagicMock()
     mock_validate.side_effect = ValueError("duplicate IDs")
 
-    run_standardization_pipeline(MagicMock(), MagicMock(), ingestion_config, {}, MagicMock())
+    run_standardization_pipeline(MagicMock(), MagicMock(), ingestion_config, {}, MagicMock(), MagicMock(), "run-1", "dev")
 
     mock_write.assert_not_called()
 
@@ -211,6 +212,6 @@ def test_run_pipeline_forwards_dmdapi_to_process_template_tables(mock_process):
     mock_process.side_effect = Exception("stop early")
 
     dmdapi = MagicMock()
-    run_standardization_pipeline(MagicMock(), MagicMock(), ingestion_config, {}, dmdapi)
+    run_standardization_pipeline(MagicMock(), MagicMock(), ingestion_config, {}, dmdapi, MagicMock(), "run-1", "dev")
 
     assert mock_process.call_args[0][4] is dmdapi
