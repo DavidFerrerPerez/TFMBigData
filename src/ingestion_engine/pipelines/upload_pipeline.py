@@ -191,12 +191,3 @@ def main(environment: str) -> None:
         spark.stop()
 
     logging.info("Upload pipeline completed successfully.")
-
-
-if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
-
-    if len(sys.argv) < 2:
-        raise ValueError("Must provide an environment argument.")
-
-    main(environment=sys.argv[1])

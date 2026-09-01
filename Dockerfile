@@ -22,16 +22,6 @@ RUN pip install pdm
 
 WORKDIR /app
 
-ARG JFROG_XYLEM_PYPI_USER
-ARG JFROG_XYLEM_PYPI_TOKEN
-ARG NEXUS_PYPI_USER
-ARG NEXUS_PYPI_TOKEN
-
-ENV JFROG_XYLEM_PYPI_USER=${JFROG_XYLEM_PYPI_USER}
-ENV JFROG_XYLEM_PYPI_TOKEN=${JFROG_XYLEM_PYPI_TOKEN}
-ENV NEXUS_PYPI_USER=${NEXUS_PYPI_USER}
-ENV NEXUS_PYPI_TOKEN=${NEXUS_PYPI_TOKEN}
-
 RUN pdm config venv.in_project false
 RUN pdm config venv.location /venv
 RUN pdm venv create 3.13
@@ -44,3 +34,5 @@ RUN pdm install --no-editable
 COPY src ./src
 
 COPY . .
+
+ENTRYPOINT ["pdm", "run", "python", "-m", "ingestion_engine"]

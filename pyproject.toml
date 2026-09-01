@@ -35,3 +35,6 @@ test = [
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 testpaths = ["tests"]
+
+[project.scripts]
+ingestion-engine = "ingestion_engine.cli:main"
