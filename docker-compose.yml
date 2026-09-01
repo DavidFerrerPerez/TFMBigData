@@ -12,6 +12,7 @@ services:
     env_file:
       - config.env
     volumes:
+      - airflow_data:/opt/airflow
       - ./airflow/dags:/opt/airflow/dags
       - /var/run/docker.sock:/var/run/docker.sock
     networks:
@@ -21,3 +22,6 @@ services:
 networks:
   ingestion-network:
     name: ingestion-network
+
+volumes:
+  airflow_data:
