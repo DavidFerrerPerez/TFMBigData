@@ -1,8 +1,10 @@
 import logging
 import os
 import sys
+import json
 
 from sedona.spark import SedonaContext
+from uuid import uuid4
 
 from ingestion_engine.configuration.loader import load_ingestion_config
 from ingestion_engine.configuration.validation import validate_blob_config
@@ -14,51 +16,47 @@ from ingestion_engine.logging.config import configure_logging
 from ingestion_engine.spark.session import create_spark_session
 from ingestion_engine.storage.blob_client import BlobClient
 from ingestion_engine.storage.geoparquet_reader import read_geoparquet_to_df
+from ingestion_engine.quarantine.builders import build_quarantine_records_from_df, build_upload_quarantine_records
+from ingestion_engine.quarantine.error_codes import ErrorCode, FailureStage
+from ingestion_engine.quarantine.quarantine_service import QuarantineService
+from ingestion_engine.quarantine.models import QuarantineRecord
 
 
-def upload_asset_batch(asset_list: list[dict], template: str, dmd_api: DMDApi) -> None:
-    """
-    Upload a batch of assets to DMD.
-
-    Args:
-        asset_list (list[dict]): Assets to upload.
-        template (str): Template name used for logging and error output.
-        dmd_api (DMDApi): DMD API client.
-    """
+def upload_asset_batch(asset_list: list[dict], template: str, dmd_api: DMDApi, quarantine_service: QuarantineService, run_id: str, environment: str) -> None:
     if not asset_list:
         return
 
     try:
         response = dmd_api.create_assets(asset_list)
-
-        print(f"Response for template '{template}': {response}")
-
-        if "error" in str(response.text).lower() and "Duplicate Name Exception" not in str(response.text):
-            logging.warning(f"Error detected in response for template '{template}'. Writing failed assets to file.")
-            _write_failed_assets(template, asset_list, response.text)
-
     except Exception as e:
-        logging.exception(f"Error uploading batch for template '{template}': {e}")
+        logging.exception(f"Error communicating with DMD while uploading template '{template}': {e}")
+        raise
 
-    finally:
+    if response.ok:
         asset_list.clear()
+        return
+
+    if "Duplicate Name Exception" in response.text:
+        logging.warning(f"Duplicate assets detected for template '{template}'.")
+        asset_list.clear()
+        return
+
+    if 400 <= response.status_code < 500:
+        records = build_upload_quarantine_records(asset_list, template, run_id, environment, response)
+
+        quarantine_service.write(records)
+
+        logging.warning(f"Quarantined {len(records)} assets rejected by DMD for template '{template}'.")
+        asset_list.clear()
+        return
+
+    raise RuntimeError(
+        f"DMD upload failed for template '{template}' "
+        f"with HTTP {response.status_code}: {response.text}"
+    )
 
 
-def _write_failed_assets(template: str, assets: list[dict], response) -> None:
-    """
-    Write failed asset names and their API response to a file.
-
-    Args:
-        template (str): Template name used for the filename.
-        assets (list[dict]): List of assets that failed to upload.
-        response: The API response that indicates the failure.
-    """
-    with open(f"{template}_failed_assets.txt", "a", encoding="utf-8") as file:
-        for asset in assets:
-            file.write(f"{asset.get('name', 'unknown')}: {response}\n")
-
-
-def upload_template(spark: SedonaContext, blob_client: BlobClient, template: str, ingestion_config, dmd_api: DMDApi, iotcore_api: IOTCoreAPI) -> None:
+def upload_template(spark: SedonaContext, blob_client: BlobClient, template: str, ingestion_config, dmd_api: DMDApi, iotcore_api: IOTCoreAPI, quarantine_service: QuarantineService, run_id: str, environment: str) -> None:
     """
     Read, prepare and upload all assets associated with a DMD template.
 
@@ -88,31 +86,60 @@ def upload_template(spark: SedonaContext, blob_client: BlobClient, template: str
     template_characteristics_list = create_characteristics_list(template_schema)
 
     asset_list = []
+    quarantine_records = []
 
     for row in df_assets.toLocalIterator():
-        row_specific_characteristics = build_characteristics(template_characteristics_list, row, dmd_api, iotcore_api)
+        try:
+            row_specific_characteristics = build_characteristics(template_characteristics_list, row, dmd_api, iotcore_api)
 
-        asset = build_asset(row, row_specific_characteristics, template_metadata, ingestion_config.main_hierarchy_parent, ingestion_config.data_quality.geometry_column)
+            asset = build_asset(
+                row,
+                row_specific_characteristics,
+                template_metadata,
+                ingestion_config.main_hierarchy_parent,
+                ingestion_config.data_quality.geometry_column,
+            )
 
-        print(asset)
+        except Exception as e:
+            payload = row.asDict(recursive=True)
+
+            record = QuarantineRecord(
+                run_id=run_id,
+                environment=environment,
+                template_code=template,
+                source_id=str(payload.get("id")) if payload.get("id") is not None else None,
+                code_reference=payload.get("codeReference"),
+                stage=FailureStage.UPLOAD,
+                error_code=ErrorCode.DMD_REJECTED_ASSET,
+                error_message=str(e),
+                asset=payload,
+            )
+
+            quarantine_records.append(record)
+
+            logging.warning(f"Asset quarantined while building template '{template}': {e}")
+            continue
 
         asset_list.append(asset)
 
         if len(asset_list) >= ingestion_config.batch_size:
-            upload_asset_batch(asset_list, template, dmd_api)
+            upload_asset_batch(asset_list, template, dmd_api, quarantine_service, run_id, environment)
 
     if asset_list:
-        upload_asset_batch(asset_list, template, dmd_api)
+        upload_asset_batch(asset_list, template, dmd_api, quarantine_service, run_id, environment)
+
+    if quarantine_records:
+        quarantine_service.write(quarantine_records)
 
     logging.info(f"Template {template} uploaded successfully.")
 
 
-def run_upload_pipeline(spark: SedonaContext, blob_client: BlobClient, ingestion_config, dmd_api: DMDApi, iotcore_api: IOTCoreAPI) -> None:
+def run_upload_pipeline(spark: SedonaContext, blob_client: BlobClient, ingestion_config, dmd_api: DMDApi, iotcore_api: IOTCoreAPI, quarantine_service: QuarantineService, run_id: str, environment: str) -> None:
     """
     Execute the upload pipeline for every configured template.
     """
     for template in ingestion_config.templates:
-        upload_template(spark, blob_client, template, ingestion_config, dmd_api, iotcore_api)
+        upload_template(spark, blob_client, template, ingestion_config, dmd_api, iotcore_api, quarantine_service, run_id, environment)
 
 
 def main(environment: str) -> None:
@@ -121,7 +148,9 @@ def main(environment: str) -> None:
 
     environment = environment.upper()
 
-    logging.info(f"Starting the upload pipeline for environment '{environment}'...")
+    run_id = str(uuid4())
+
+    logging.info(f"Starting the upload pipeline for environment '{environment}'... run_id: {run_id}")
 
     ingestion_config = load_ingestion_config("config/ingestion.yaml")
 
@@ -149,10 +178,15 @@ def main(environment: str) -> None:
         container_name=container_name
     )
 
+    quarantine_service = QuarantineService(
+        blob_client=blob_client,
+        base_path=ingestion_config.storage.paths.quarantine,
+    )
+
     spark = create_spark_session(app_name="ingestion-engine-upload")
 
     try:
-        run_upload_pipeline(spark, blob_client, ingestion_config, dmd_api, iotcore_api)
+        run_upload_pipeline(spark, blob_client, ingestion_config, dmd_api, iotcore_api, quarantine_service, run_id, environment)
     finally:
         spark.stop()
 
