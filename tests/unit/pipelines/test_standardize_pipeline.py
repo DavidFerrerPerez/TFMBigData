@@ -10,6 +10,7 @@ from ingestion_engine.pipelines.standardize_pipeline import (
     process_template_tables,
     run_standardization_pipeline,
 )
+from ingestion_engine.pipelines.errors import PipelineExecutionError
 
 
 # configure_logging
@@ -67,7 +68,7 @@ def test_process_template_tables_returns_transformed_dfs(mock_read, mock_transfo
     spark = MagicMock()
     blob_client = MagicMock()
     dmdapi = MagicMock()
-    dmdapi.get_template_id_by_code.return_value = 1
+    dmdapi.get_template_metadata.return_value = {"id": 1}
     dmdapi.get_template_schema_by_id.return_value = []
 
     ingestion_config = MagicMock()
@@ -78,7 +79,7 @@ def test_process_template_tables_returns_transformed_dfs(mock_read, mock_transfo
     mock_read.return_value = MagicMock()
     mock_transform.return_value = MagicMock()
 
-    result = process_template_tables(spark, blob_client, ingestion_config, table_mapping, dmdapi, "template1")
+    result = process_template_tables(spark, blob_client, ingestion_config, table_mapping, dmdapi, "template1", "run-1")
 
     assert len(result) == 2
     assert mock_read.call_count == 2
@@ -91,7 +92,7 @@ def test_process_template_tables_skips_tables_that_fail_to_read(mock_read, mock_
     spark = MagicMock()
     blob_client = MagicMock()
     dmdapi = MagicMock()
-    dmdapi.get_template_id_by_code.return_value = 1
+    dmdapi.get_template_metadata.return_value = {"id": 1}
     dmdapi.get_template_schema_by_id.return_value = []
 
     ingestion_config = MagicMock()
@@ -102,7 +103,7 @@ def test_process_template_tables_skips_tables_that_fail_to_read(mock_read, mock_
     mock_read.side_effect = [MagicMock(), Exception("blob not found")]
     mock_transform.return_value = MagicMock()
 
-    result = process_template_tables(spark, blob_client, ingestion_config, table_mapping, dmdapi, "template1")
+    result = process_template_tables(spark, blob_client, ingestion_config, table_mapping, dmdapi, "template1", "run-1")
 
     assert len(result) == 1
 
@@ -111,16 +112,16 @@ def test_process_template_tables_skips_tables_that_fail_to_read(mock_read, mock_
 @patch("ingestion_engine.pipelines.standardize_pipeline.read_geoparquet_to_df")
 def test_process_template_tables_empty_table_list_returns_empty(mock_read, mock_transform):
     dmdapi = MagicMock()
-    dmdapi.get_template_id_by_code.return_value = 1
+    dmdapi.get_template_metadata.return_value = {"id": 1}
     dmdapi.get_template_schema_by_id.return_value = []
 
     ingestion_config = MagicMock()
     ingestion_config.storage.paths.raw = "raw"
     ingestion_config.data_quality.core_fields = ["id"]
 
-    result = process_template_tables(MagicMock(), MagicMock(), ingestion_config, {"tmpl": []}, dmdapi, "tmpl")
+    with pytest.raises(ValueError, match="No source tables configured"):
+        process_template_tables(MagicMock(), MagicMock(), ingestion_config, {"tmpl": []}, dmdapi, "tmpl", "run-1")
 
-    assert result == []
     mock_read.assert_not_called()
 
 
@@ -172,7 +173,8 @@ def test_run_pipeline_skips_template_on_process_error(
     ingestion_config.templates = ["template1"]
     mock_process.side_effect = Exception("DMD unreachable")
 
-    run_standardization_pipeline(MagicMock(), MagicMock(), ingestion_config, {}, MagicMock(), MagicMock(), "run-1", "dev")
+    with pytest.raises(PipelineExecutionError, match="DMD unreachable"):
+        run_standardization_pipeline(MagicMock(), MagicMock(), ingestion_config, {}, MagicMock(), MagicMock(), "run-1", "dev")
 
     mock_write.assert_not_called()
 
@@ -200,7 +202,8 @@ def test_run_pipeline_skips_template_on_validation_error(
     mock_anon.return_value = MagicMock()
     mock_validate.side_effect = ValueError("duplicate IDs")
 
-    run_standardization_pipeline(MagicMock(), MagicMock(), ingestion_config, {}, MagicMock(), MagicMock(), "run-1", "dev")
+    with pytest.raises(PipelineExecutionError, match="duplicate IDs"):
+        run_standardization_pipeline(MagicMock(), MagicMock(), ingestion_config, {}, MagicMock(), MagicMock(), "run-1", "dev")
 
     mock_write.assert_not_called()
 
@@ -212,6 +215,7 @@ def test_run_pipeline_forwards_dmdapi_to_process_template_tables(mock_process):
     mock_process.side_effect = Exception("stop early")
 
     dmdapi = MagicMock()
-    run_standardization_pipeline(MagicMock(), MagicMock(), ingestion_config, {}, dmdapi, MagicMock(), "run-1", "dev")
+    with pytest.raises(PipelineExecutionError, match="stop early"):
+        run_standardization_pipeline(MagicMock(), MagicMock(), ingestion_config, {}, dmdapi, MagicMock(), "run-1", "dev")
 
     assert mock_process.call_args[0][4] is dmdapi
