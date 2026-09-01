@@ -42,18 +42,3 @@ batch_size: 100
 
 quarantine:
   enabled: true
-
-  format: parquet
-
-  include_source_record: true
-  include_standard_payload: true
-
-  retention_days: 90
-
-  retry:
-    max_attempts: 3
-    initial_delay_seconds: 2
-
-  thresholds:
-    max_ratio: 0.01
-    max_records: 1000
