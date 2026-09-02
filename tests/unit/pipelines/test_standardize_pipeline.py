@@ -1,16 +1,16 @@
 import json
+
 import pytest
+from unittest.mock import MagicMock, mock_open, patch
 
-from unittest.mock import MagicMock, patch, mock_open
-
+from ingestion_engine.pipelines.errors import PipelineExecutionError
 from ingestion_engine.pipelines.standardize_pipeline import (
     configure_logging,
     load_table_mapping,
-    validate_blob_config,
     process_template_tables,
     run_standardization_pipeline,
+    validate_blob_config,
 )
-from ingestion_engine.pipelines.errors import PipelineExecutionError
 
 
 # configure_logging
@@ -126,26 +126,21 @@ def test_process_template_tables_empty_table_list_returns_empty(mock_read, mock_
 
 # run_standardization_pipeline
 
-@patch("ingestion_engine.pipelines.standardize_pipeline.write_df_to_geoparquet")
-@patch("ingestion_engine.pipelines.standardize_pipeline.validate_dataframe")
-@patch("ingestion_engine.pipelines.standardize_pipeline.anonymize_dataframe")
-@patch("ingestion_engine.pipelines.standardize_pipeline.split_mandatory_nulls")
-@patch("ingestion_engine.pipelines.standardize_pipeline.remove_duplicates")
-@patch("ingestion_engine.pipelines.standardize_pipeline.fill_name")
-@patch("ingestion_engine.pipelines.standardize_pipeline.unify_tables")
+@patch("ingestion_engine.pipelines.standardize_pipeline.build_quarantine_records_from_df")
 @patch("ingestion_engine.pipelines.standardize_pipeline.process_template_tables")
-def test_run_pipeline_processes_all_templates(
-    mock_process, mock_unify, mock_fill,
-    mock_dedup, mock_nulls, mock_anon, mock_validate, mock_write,
-):
+@patch("ingestion_engine.pipelines.standardize_pipeline.unify_tables")
+@patch("ingestion_engine.pipelines.standardize_pipeline.fill_name")
+@patch("ingestion_engine.pipelines.standardize_pipeline.anonymize_dataframe")
+@patch("ingestion_engine.pipelines.standardize_pipeline.validate_dataframe")
+@patch("ingestion_engine.pipelines.standardize_pipeline.write_df_to_geoparquet")
+@patch("builtins.open", mock_open(read_data="{}"))
+def test_run_pipeline_processes_all_templates(mock_write, mock_validate, mock_anon, mock_fill, mock_unify, mock_process, mock_quarantine):
     ingestion_config = MagicMock()
     ingestion_config.templates = ["template1", "template2"]
 
     mock_process.return_value = [MagicMock()]
     mock_unify.return_value = MagicMock()
     mock_fill.return_value = MagicMock()
-    mock_dedup.return_value = MagicMock()
-    mock_nulls.return_value = (MagicMock(), MagicMock())
     mock_anon.return_value = MagicMock()
     mock_validate.return_value = (MagicMock(), MagicMock())
 
@@ -156,18 +151,15 @@ def test_run_pipeline_processes_all_templates(
     assert mock_write.call_count == 2
 
 
-@patch("ingestion_engine.pipelines.standardize_pipeline.write_df_to_geoparquet")
-@patch("ingestion_engine.pipelines.standardize_pipeline.validate_dataframe")
-@patch("ingestion_engine.pipelines.standardize_pipeline.anonymize_dataframe")
-@patch("ingestion_engine.pipelines.standardize_pipeline.split_mandatory_nulls")
-@patch("ingestion_engine.pipelines.standardize_pipeline.remove_duplicates")
-@patch("ingestion_engine.pipelines.standardize_pipeline.fill_name")
-@patch("ingestion_engine.pipelines.standardize_pipeline.unify_tables")
+@patch("ingestion_engine.pipelines.standardize_pipeline.build_quarantine_records_from_df")
 @patch("ingestion_engine.pipelines.standardize_pipeline.process_template_tables")
-def test_run_pipeline_skips_template_on_process_error(
-    mock_process, mock_unify, mock_fill,
-    mock_dedup, mock_nulls, mock_anon, mock_validate, mock_write,
-):
+@patch("ingestion_engine.pipelines.standardize_pipeline.unify_tables")
+@patch("ingestion_engine.pipelines.standardize_pipeline.fill_name")
+@patch("ingestion_engine.pipelines.standardize_pipeline.anonymize_dataframe")
+@patch("ingestion_engine.pipelines.standardize_pipeline.validate_dataframe")
+@patch("ingestion_engine.pipelines.standardize_pipeline.write_df_to_geoparquet")
+@patch("builtins.open", mock_open(read_data="{}"))
+def test_run_pipeline_skips_template_on_process_error(mock_write, mock_validate, mock_anon, mock_fill, mock_unify, mock_process, mock_quarantine):
     ingestion_config = MagicMock()
     ingestion_config.templates = ["template1"]
     mock_process.side_effect = Exception("DMD unreachable")
@@ -178,26 +170,21 @@ def test_run_pipeline_skips_template_on_process_error(
     mock_write.assert_not_called()
 
 
-@patch("ingestion_engine.pipelines.standardize_pipeline.write_df_to_geoparquet")
-@patch("ingestion_engine.pipelines.standardize_pipeline.validate_dataframe")
-@patch("ingestion_engine.pipelines.standardize_pipeline.anonymize_dataframe")
-@patch("ingestion_engine.pipelines.standardize_pipeline.split_mandatory_nulls")
-@patch("ingestion_engine.pipelines.standardize_pipeline.remove_duplicates")
-@patch("ingestion_engine.pipelines.standardize_pipeline.fill_name")
-@patch("ingestion_engine.pipelines.standardize_pipeline.unify_tables")
+@patch("ingestion_engine.pipelines.standardize_pipeline.build_quarantine_records_from_df")
 @patch("ingestion_engine.pipelines.standardize_pipeline.process_template_tables")
-def test_run_pipeline_skips_template_on_validation_error(
-    mock_process, mock_unify, mock_fill,
-    mock_dedup, mock_nulls, mock_anon, mock_validate, mock_write,
-):
+@patch("ingestion_engine.pipelines.standardize_pipeline.unify_tables")
+@patch("ingestion_engine.pipelines.standardize_pipeline.fill_name")
+@patch("ingestion_engine.pipelines.standardize_pipeline.anonymize_dataframe")
+@patch("ingestion_engine.pipelines.standardize_pipeline.validate_dataframe")
+@patch("ingestion_engine.pipelines.standardize_pipeline.write_df_to_geoparquet")
+@patch("builtins.open", mock_open(read_data="{}"))
+def test_run_pipeline_skips_template_on_validation_error(mock_write, mock_validate, mock_anon, mock_fill, mock_unify, mock_process, mock_quarantine):
     ingestion_config = MagicMock()
     ingestion_config.templates = ["template1"]
 
     mock_process.return_value = [MagicMock()]
     mock_unify.return_value = MagicMock()
     mock_fill.return_value = MagicMock()
-    mock_dedup.return_value = MagicMock()
-    mock_nulls.return_value = (MagicMock(), MagicMock())
     mock_anon.return_value = MagicMock()
     mock_validate.side_effect = ValueError("duplicate IDs")
 
@@ -208,12 +195,14 @@ def test_run_pipeline_skips_template_on_validation_error(
 
 
 @patch("ingestion_engine.pipelines.standardize_pipeline.process_template_tables")
+@patch("builtins.open", mock_open(read_data="{}"))
 def test_run_pipeline_forwards_dmdapi_to_process_template_tables(mock_process):
     ingestion_config = MagicMock()
     ingestion_config.templates = ["template1"]
     mock_process.side_effect = Exception("stop early")
 
     dmdapi = MagicMock()
+
     with pytest.raises(PipelineExecutionError, match="stop early"):
         run_standardization_pipeline(MagicMock(), MagicMock(), ingestion_config, {}, dmdapi, MagicMock(), "run-1", "dev")
 
