@@ -2,7 +2,6 @@ import logging
 import os
 
 from sedona.spark import SedonaContext
-from datetime import datetime
 
 from ingestion_engine.configuration.loader import load_ingestion_config
 from ingestion_engine.configuration.validation import validate_blob_config

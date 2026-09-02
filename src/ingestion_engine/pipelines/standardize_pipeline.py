@@ -2,8 +2,6 @@ import os
 import logging
 import json
 
-from datetime import datetime
-
 from ingestion_engine.storage.blob_client import BlobClient
 from ingestion_engine.configuration.loader import load_ingestion_config, load_table_mapping
 from ingestion_engine.transformation.table_unificator import unify_tables

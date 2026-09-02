@@ -1,8 +1,6 @@
 import os
 import logging
 
-from datetime import datetime
-
 from ingestion_engine.configuration.loader import load_table_mapping
 from ingestion_engine.extraction.postgres_reader import read_table_from_postgres
 from ingestion_engine.logging.config import configure_logging
