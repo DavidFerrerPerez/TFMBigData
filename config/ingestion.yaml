@@ -6,7 +6,7 @@ available_environments:
   - PROD
 
 source:
-  db_schema: assets
+  db_schema: snapshot_gis_go
 
 templates:
   - XV_pipe
