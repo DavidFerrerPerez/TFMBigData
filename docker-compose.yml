@@ -24,4 +24,4 @@ networks:
     name: ingestion-network
 
 volumes:
-  airflow_data:
+  - airflow_data:/opt/airflow

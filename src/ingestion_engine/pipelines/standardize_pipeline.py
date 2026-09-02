@@ -144,7 +144,7 @@ def run_standardization_pipeline(spark, blob_client: BlobClient, ingestion_confi
             write_df_to_geoparquet(
                 valid_df,
                 blob_client,
-                f"{ingestion_config.storage.paths.standard}/{template}.parquet",
+                f"{ingestion_config.storage.paths.standard}/run_id={run_id}/{template}.parquet",
             )
 
             logging.info(f"Template '{template}' standardized successfully.")

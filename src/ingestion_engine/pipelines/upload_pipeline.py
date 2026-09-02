@@ -195,7 +195,7 @@ def main(environment: str, run_id: str) -> None:
     spark = create_spark_session(app_name="ingestion-engine-upload")
 
     try:
-        run_upload_pipeline(spark, blob_client, ingestion_config, dmd_api, iotcore_api, quarantine_service, run_id, environment, run_id)
+        run_upload_pipeline(spark, blob_client, ingestion_config, dmd_api, iotcore_api, quarantine_service, run_id, environment)
     finally:
         spark.stop()
 
