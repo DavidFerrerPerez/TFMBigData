@@ -16,6 +16,7 @@ from ingestion_engine.logging.config import configure_logging
 from ingestion_engine.spark.session import create_spark_session
 from ingestion_engine.configuration.validation import validate_blob_config
 from ingestion_engine.quarantine.builders import build_quarantine_records_from_df
+from ingestion_engine.storage.path_utils import run_id_to_path
 from ingestion_engine.pipelines.errors import PipelineExecutionError
 from ingestion_engine.quarantine.error_codes import ErrorCode, FailureStage
 from ingestion_engine.quarantine.quarantine_service import QuarantineService
@@ -55,7 +56,8 @@ def process_template_tables(spark, blob_client: BlobClient, ingestion_config, ta
         logging.debug(f"Reading table {table} from blob storage for template {template}.")
 
         try:
-            df = read_geoparquet_to_df(spark, blob_client, f"{ingestion_config.storage.paths.raw}/run_id={run_id}/{table}.parquet")
+            run_id_path = run_id_to_path(run_id)
+            df = read_geoparquet_to_df(spark, blob_client, f"{ingestion_config.storage.paths.raw}/run_id={run_id_path}/{table}.parquet")
 
         except Exception as e:
             logging.error(f"Error reading table {table} from blob storage: {e}")
@@ -119,10 +121,12 @@ def run_standardization_pipeline(spark, blob_client: BlobClient, ingestion_confi
                     )
                 )
 
+            run_id_path = run_id_to_path(run_id)
+
             write_df_to_geoparquet(
                 valid_df,
                 blob_client,
-                f"{ingestion_config.storage.paths.standard}/run_id={run_id}/{template}.parquet",
+                f"{ingestion_config.storage.paths.standard}/run_id={run_id_path}/{template}.parquet",
             )
 
             logging.info(f"Template '{template}' standardized successfully.")

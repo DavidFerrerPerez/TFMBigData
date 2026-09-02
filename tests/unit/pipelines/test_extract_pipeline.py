@@ -50,7 +50,7 @@ def test_run_extraction_pipeline_reads_and_writes_table():
         mock_df = MagicMock()
         mock_read.return_value = mock_df
 
-        run_extraction_pipeline(config, table_mapping, spark, blob_client, "dev", "run-123")
+        run_extraction_pipeline(config, table_mapping, spark, blob_client, "dev", "2024-01-15T10:30:45.123456")
 
         mock_read.assert_called_once_with("public", "my_table", "geometry", spark, "dev")
         mock_write.assert_called_once()
@@ -71,7 +71,7 @@ def test_run_extraction_pipeline_skips_template_with_no_tables():
 
         # Pipeline should raise error due to missing tables for template2
         with pytest.raises(PipelineExecutionError) as exc_info:
-            run_extraction_pipeline(config, table_mapping, spark, blob_client, "dev", "run-123")
+            run_extraction_pipeline(config, table_mapping, spark, blob_client, "dev", "2024-01-15T10:30:45.123456")
 
         # Error should mention template2
         assert "template2" in str(exc_info.value)
@@ -91,7 +91,7 @@ def test_run_extraction_pipeline_continues_on_read_failure():
         mock_read.side_effect = [Exception("Connection failed"), mock_df]
 
         with pytest.raises(PipelineExecutionError) as exc_info:
-            run_extraction_pipeline(config, table_mapping, spark, blob_client, "dev", "run-123")
+            run_extraction_pipeline(config, table_mapping, spark, blob_client, "dev", "2024-01-15T10:30:45.123456")
 
         # Should have attempted both tables before failing
         assert mock_read.call_count == 2
@@ -114,7 +114,7 @@ def test_run_extraction_pipeline_continues_on_write_failure():
         mock_write.side_effect = [Exception("Storage error"), None]
 
         with pytest.raises(PipelineExecutionError) as exc_info:
-            run_extraction_pipeline(config, table_mapping, spark, blob_client, "dev", "run-123")
+            run_extraction_pipeline(config, table_mapping, spark, blob_client, "dev", "2024-01-15T10:30:45.123456")
 
         # Should have tried both tables
         assert mock_read.call_count == 2
@@ -135,7 +135,7 @@ def test_run_extraction_pipeline_all_success_no_error():
         mock_read.return_value = mock_df
 
         # Should not raise any exception
-        run_extraction_pipeline(config, table_mapping, spark, blob_client, "dev", "run-123")
+        run_extraction_pipeline(config, table_mapping, spark, blob_client, "dev", "2024-01-15T10:30:45.123456")
 
         assert mock_read.call_count == 2
         assert mock_write.call_count == 2
@@ -154,13 +154,15 @@ def test_run_extraction_pipeline_writes_to_correct_blob_path():
         mock_df = MagicMock()
         mock_read.return_value = mock_df
 
-        run_extraction_pipeline(config, table_mapping, spark, blob_client, "dev", "run-456")
+        run_extraction_pipeline(config, table_mapping, spark, blob_client, "dev", "2024-01-15T10:30:45.123456")
 
         # Check that write was called with correct path
         mock_write.assert_called_once()
         call_args = mock_write.call_args
         blob_path = call_args[0][2]  # Third positional argument is blob_path
-        assert blob_path == "raw/data/run_id=run-456/my_table.parquet"
+        # Path should contain the formatted run_id
+        assert "run_id=20240115T103045.123456" in blob_path
+        assert "my_table.parquet" in blob_path
 
 
 def test_run_extraction_pipeline_processes_multiple_templates():
@@ -179,7 +181,7 @@ def test_run_extraction_pipeline_processes_multiple_templates():
         mock_df = MagicMock()
         mock_read.return_value = mock_df
 
-        run_extraction_pipeline(config, table_mapping, spark, blob_client, "dev", "run-123")
+        run_extraction_pipeline(config, table_mapping, spark, blob_client, "dev", "2024-01-15T10:30:45.123456")
 
         # Should have read 2 tables (one per template)
         assert mock_read.call_count == 2
