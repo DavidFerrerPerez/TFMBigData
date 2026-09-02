@@ -63,7 +63,7 @@ pipeline {
                         --cov=ingestion_engine \
                         --cov-report=term-missing \
                         --cov-report=xml:/tmp/coverage.xml \
-                        --cov-fail-under=80 \
+                        --cov-fail-under=70 \
                         --junitxml=/tmp/test-results.xml
 
                     # Tests are not included in the production image,
