@@ -26,6 +26,10 @@ def build_quarantine_records_from_df(df, run_id: str, environment: str, template
     for row in df.toLocalIterator():
         payload = row.asDict(recursive=True)
 
+        error_code_value = payload.pop("_quarantine_error_code", error_code.value)
+        error_message_value = payload.pop("_quarantine_error_message", error_message)
+        field_name = payload.pop("_quarantine_field", None)
+
         records.append(
             QuarantineRecord(
                 run_id=run_id,
@@ -34,8 +38,9 @@ def build_quarantine_records_from_df(df, run_id: str, environment: str, template
                 source_id=str(payload.get("id")) if payload.get("id") is not None else None,
                 code_reference=payload.get("codeReference"),
                 stage=stage,
-                error_code=error_code,
-                error_message=error_message,
+                error_code=ErrorCode(error_code_value),
+                error_message=error_message_value,
+                field_name=field_name,
                 asset=payload,
             )
         )

@@ -1,6 +1,4 @@
 from pyspark.sql import SparkSession, DataFrame
-from ingestion_engine.storage.geoparquet_reader import read_geoparquet_to_df
-from ingestion_engine.storage.blob_client import BlobClient
 
 def unify_tables(spark: SparkSession, source_tables: list[DataFrame]) -> DataFrame:
     """

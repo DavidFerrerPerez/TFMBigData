@@ -3,6 +3,8 @@ import json
 
 class DMDApi:
 
+    REQUEST_TIMEOUT = (5, 30)
+
     def __init__(self, dmd_api_url: str, token: str = None):
 
         self.dmd_api_url = dmd_api_url
@@ -27,7 +29,7 @@ class DMDApi:
         Returns:
             requests.Response: The response object from the GET request.
         """
-        return requests.get(url, verify=True, headers=headers, params=params)
+        return requests.get(url, verify=True, headers=headers, params=params, timeout=self.REQUEST_TIMEOUT)
 
 
     def post_response(self, url, body, headers, params=None):
@@ -43,7 +45,7 @@ class DMDApi:
         Returns:
             requests.Response: The response object from the POST request.
         """
-        return requests.post(url, verify=True, params=params, headers=headers, data=body)
+        return requests.post(url, verify=True, params=params, headers=headers, data=body, timeout=self.REQUEST_TIMEOUT)
 
 
     def _get_templates(self):
@@ -107,11 +109,11 @@ class DMDApi:
         """
 
         response = self.get_response(
-            self.dmd_api_url + f"/api/v2/template/description/{template_id}", headers=self.headers)
-
-        if response.status_code == 200:
-            return response.json().get("characteristics", [])
-        return response
+            f"{self.dmd_api_url}/api/v2/template/description/{template_id}",
+            headers=self.headers,
+        )
+        response.raise_for_status()
+        return response.json().get("characteristics", [])
 
 
     def _get_maindata_values(self):

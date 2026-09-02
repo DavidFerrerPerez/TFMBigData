@@ -24,6 +24,7 @@ def _make_error_response(status_code=422, text="some error occurred"):
 def _make_duplicate_response():
     response = MagicMock()
     response.ok = False
+    response.status_code = 422
     response.text = "Duplicate Name Exception"
     return response
 
@@ -73,7 +74,8 @@ def test_upload_asset_batch_skips_quarantine_on_duplicate_name_exception():
     quarantine_service = MagicMock()
     assets = [{"name": "Asset A"}]
 
-    upload_asset_batch(assets, "my_template", dmd_api, quarantine_service, "run-1", "dev")
+    with patch("ingestion_engine.pipelines.upload_pipeline.logging"):
+        upload_asset_batch(assets, "my_template", dmd_api, quarantine_service, "run-1", "dev")
 
     quarantine_service.write.assert_not_called()
 

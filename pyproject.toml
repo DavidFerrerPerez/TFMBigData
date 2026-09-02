@@ -3,30 +3,23 @@ name = "ingestion-engine-david-ferrer"
 description = "Ingestion Engine developed for the Final Masters Project"
 requires-python = ">=3.13, <3.14"
 version = "0.1.0"
-author = {name = "David Ferrer Pérez", email = "davidferrerrugby@gmail.com"}
+authors = [{name = "David Ferrer Pérez", email = "davidferrerrugby@gmail.com"}]
 dependencies = [
     "pyspark>=3.5.0,<4.0.0",
-    "sqlalchemy>=2.0.52",
-    "psycopg2>=2.9.12",
     "azure-storage-blob>=5.0.0",
     "apache-sedona>=1.7.0,<1.8.0",
-    "pandas>=2.0.0,<3.0.0",
     "pyyaml>=6.0.3",
-    "pydantic>=2.13.4"
+    "pydantic>=2.13.4",
+    "requests>=2.32,<3.0",
+    "shapely>=2.0,<3.0",
 ]
 
 [build-system]
 requires = [
-  "scikit-build",
-  "setuptools",
-  "wheel",
   "pdm-backend"
 ]
 build-backend = "pdm.backend"
 [dependency-groups]
-dev = [
-    "pytest>=9.1.1",
-]
 test = [
     "pytest>=9.1.1",
     "pytest-cov>=7.1.0",

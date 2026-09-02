@@ -1,10 +1,6 @@
 import os
 import logging
 import json
-import sys
-from uuid import uuid4
-
-from sedona.spark import SedonaContext
 
 from ingestion_engine.storage.blob_client import BlobClient
 from ingestion_engine.configuration.loader import load_ingestion_config, load_table_mapping
@@ -13,8 +9,6 @@ from ingestion_engine.dmd.dmd_api import DMDApi
 from ingestion_engine.transformation.column_caster import transform_with_template_schema
 from ingestion_engine.storage.geoparquet_reader import read_geoparquet_to_df
 from ingestion_engine.transformation.name_validator import fill_name
-from ingestion_engine.validation.duplicates_validation import remove_duplicates
-from ingestion_engine.validation.null_validation import split_mandatory_nulls
 from ingestion_engine.transformation.anonymization import anonymize_dataframe
 from ingestion_engine.validation.complete_validation import validate_dataframe
 from ingestion_engine.storage.geoparquet_writer import write_df_to_geoparquet
@@ -27,7 +21,7 @@ from ingestion_engine.quarantine.error_codes import ErrorCode, FailureStage
 from ingestion_engine.quarantine.quarantine_service import QuarantineService
 
 
-def process_template_tables(spark, blob_client: BlobClient, ingestion_config, table_mapping, dmdapi, template: str, run_id: str) -> list:
+def process_template_tables(spark, blob_client: BlobClient, ingestion_config, table_mapping, dmdapi, template: str, run_id: str, characteristics_mapping: dict) -> list:
     """
     Process the tables for a given template.
 
@@ -65,9 +59,9 @@ def process_template_tables(spark, blob_client: BlobClient, ingestion_config, ta
 
         except Exception as e:
             logging.error(f"Error reading table {table} from blob storage: {e}")
-            continue
+            raise e
 
-        transformed_df = transform_with_template_schema(df, ingestion_config.data_quality.core_fields, template_schema)
+        transformed_df = transform_with_template_schema(df, ingestion_config.data_quality.core_fields, template_schema, characteristics_mapping)
 
         source_tables.append(transformed_df)
 
@@ -94,35 +88,19 @@ def run_standardization_pipeline(spark, blob_client: BlobClient, ingestion_confi
 
     failures = []
 
+    with open("config/mappings/characteristics_mapping.json", "r", encoding="utf-8") as f:
+            characteristics_mapping = json.load(f)
+
     for template in ingestion_config.templates:
         logging.info(f"Standardizing template '{template}'.")
         quarantine_records = []
 
         try:
-            source_tables = process_template_tables(spark, blob_client, ingestion_config, table_mapping, dmdapi, template, run_id)
+            source_tables = process_template_tables(spark, blob_client, ingestion_config, table_mapping, dmdapi, template, run_id, characteristics_mapping)
 
             unified_df = unify_tables(spark, source_tables)
             df_with_name = fill_name(unified_df)
-            df_no_duplicates = remove_duplicates(df_with_name, ingestion_config.data_quality.core_fields)
-            df_no_nulls, rejected_nulls_df = split_mandatory_nulls(df_no_duplicates, ingestion_config)
-
-            if not rejected_nulls_df.isEmpty():
-                rejected_count = rejected_nulls_df.count()
-                logging.warning(f"Rejected {rejected_count} rows with mandatory nulls for template '{template}'.")
-
-                quarantine_records.extend(
-                    build_quarantine_records_from_df(
-                        rejected_nulls_df,
-                        run_id=run_id,
-                        environment=environment,
-                        template=template,
-                        stage=FailureStage.VALIDATION,
-                        error_code=ErrorCode.REQUIRED_FIELD_MISSING,
-                        error_message="Mandatory field is null.",
-                    )
-                )
-
-            df_anonymized = anonymize_dataframe(df_no_nulls, ingestion_config)
+            df_anonymized = anonymize_dataframe(df_with_name, ingestion_config)
             valid_df, rejected_validation_df = validate_dataframe(df_anonymized, ingestion_config)
 
             if not rejected_validation_df.isEmpty():
@@ -144,7 +122,7 @@ def run_standardization_pipeline(spark, blob_client: BlobClient, ingestion_confi
             write_df_to_geoparquet(
                 valid_df,
                 blob_client,
-                f"{ingestion_config.storage.paths.standard}/{template}.parquet",
+                f"{ingestion_config.storage.paths.standard}/run_id={run_id}/{template}.parquet",
             )
 
             logging.info(f"Template '{template}' standardized successfully.")

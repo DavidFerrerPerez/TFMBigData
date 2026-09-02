@@ -56,6 +56,10 @@ pipeline {
                         --entrypoint pdm \
                         ${IMAGE_NAME}:${IMAGE_TAG} \
                         run pytest tests \
+                        --cov=ingestion_engine \
+                        --cov-report=term-missing \
+                        --cov-report=xml:/tmp/coverage.xml \
+                        --cov-fail-under=80 \
                         --junitxml=/tmp/test-results.xml
 
                     # Run tests but retain their exit code
@@ -85,7 +89,8 @@ pipeline {
                 always {
                     junit(
                         allowEmptyResults: true,
-                        testResults: 'reports/test-results.xml'
+                        testResults: 'reports/test-results.xml',
+                        allowEmptyResults: true
                     )
                 }
             }
