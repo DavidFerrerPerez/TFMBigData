@@ -1,6 +1,8 @@
 import os
 import logging
 
+from datetime import datetime
+
 from ingestion_engine.configuration.loader import load_table_mapping
 from ingestion_engine.extraction.postgres_reader import read_table_from_postgres
 from ingestion_engine.logging.config import configure_logging
@@ -10,6 +12,7 @@ from ingestion_engine.storage.geoparquet_writer import write_df_to_geoparquet
 from ingestion_engine.configuration.loader import load_ingestion_config
 from ingestion_engine.configuration.validation import validate_blob_config
 from ingestion_engine.pipelines.errors import PipelineExecutionError
+from ingestion_engine.storage.path_utils import run_id_to_path
 
 def run_extraction_pipeline(extraction_config, table_mapping, spark, blob_client, environment, run_id) -> None:
     """
@@ -46,7 +49,9 @@ def run_extraction_pipeline(extraction_config, table_mapping, spark, blob_client
                     environment,
                 )
 
-                blob_path = f"{extraction_config.storage.paths.raw}/run_id={run_id}/{table}.parquet"
+                run_id_path = run_id_to_path(run_id)
+
+                blob_path = f"{extraction_config.storage.paths.raw}/run_id={run_id_path}/{table}.parquet"
 
                 logging.info(f"Writing table '{table}' to '{blob_path}'.")
                 write_df_to_geoparquet(df, blob_client, blob_path)

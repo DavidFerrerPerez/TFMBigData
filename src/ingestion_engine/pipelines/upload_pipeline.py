@@ -2,6 +2,7 @@ import logging
 import os
 
 from sedona.spark import SedonaContext
+from datetime import datetime
 
 from ingestion_engine.configuration.loader import load_ingestion_config
 from ingestion_engine.configuration.validation import validate_blob_config
@@ -14,6 +15,7 @@ from ingestion_engine.spark.session import create_spark_session
 from ingestion_engine.storage.blob_client import BlobClient
 from ingestion_engine.storage.geoparquet_reader import read_geoparquet_to_df
 from ingestion_engine.quarantine.builders import build_upload_quarantine_records
+from ingestion_engine.storage.path_utils import run_id_to_path
 from ingestion_engine.quarantine.error_codes import ErrorCode, FailureStage
 from ingestion_engine.quarantine.quarantine_service import QuarantineService
 from ingestion_engine.quarantine.models import QuarantineRecord
@@ -70,7 +72,8 @@ def upload_template(spark: SedonaContext, blob_client: BlobClient, template: str
     logging.info(f"Uploading template {template}...")
 
     try:
-        df_assets = read_geoparquet_to_df(spark, blob_client, f"{ingestion_config.storage.paths.standard}/run_id={run_id}/{template}.parquet")
+        run_id_path = run_id_to_path(run_id)
+        df_assets = read_geoparquet_to_df(spark, blob_client, f"{ingestion_config.storage.paths.standard}/run_id={run_id_path}/{template}.parquet")
     except Exception as e:
         raise RuntimeError(f"Could not read Standard data for template '{template}'.") from e
 
