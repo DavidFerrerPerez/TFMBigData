@@ -2,6 +2,8 @@ import requests
 
 class IOTCoreAPI:
 
+    REQUEST_TIMEOUT = (5, 30)
+
     def __init__(self, iotcore_api_url: str, token: str = None, driver: str = None):
 
         self.iotcore_api_url = iotcore_api_url
@@ -12,6 +14,7 @@ class IOTCoreAPI:
         }
         self.driver = driver
         self._tags = None
+        self._tags_by_name = None
 
     def get_response(self, url, headers, params=None):
         """
@@ -25,22 +28,20 @@ class IOTCoreAPI:
         Returns:
             requests.Response: The response object from the GET request.
         """
-        return requests.get(url, verify=True, headers=headers, params=params)
+        return requests.get(url, verify=True, headers=headers, params=params, timeout=self.REQUEST_TIMEOUT)
 
     
-    def _catalogue_tags(self):
-        """
-        Fetches the catalogue tags from the IOTCore API.
+    def _catalogue_tags_by_name(self) -> dict[str, list[str]]:
+        if self._tags_by_name is None:
+            self._tags_by_name = {}
 
-        Returns:
-            list: A list of catalogue tags retrieved from the IOTCore API.
-        """
-        if self._tags is None:
-            response = self.get_response(f'{self.iotcore_api_url}/api/v1/catalogue/tags', headers=self.headers, params={"Driver": self.driver})
-            response.raise_for_status()
-            self._tags = response.json()
+            for tag in self._catalogue_tags():
+                name = tag.get("name")
+                uid = tag.get("uid")
+                if name and uid:
+                    self._tags_by_name.setdefault(name, []).append(uid)
 
-        return self._tags
+        return self._tags_by_name
 
     def get_uids_from_tag_name(self, tag_name: str):
         """
@@ -48,13 +49,9 @@ class IOTCoreAPI:
 
         Args:
             tag_name (str): The name of the tag to fetch the UID for.
+
+        Returns:
+            list[str]: A list of UIDs associated with the given tag name.
         """
-        tags = self._catalogue_tags()
-
-        uids = []
-
-        for tag in tags:
-            if tag.get("name") == tag_name:
-                uids.append(tag.get("uid"))
-        return uids
+        return self._catalogue_tags_by_name().get(tag_name, [])
     

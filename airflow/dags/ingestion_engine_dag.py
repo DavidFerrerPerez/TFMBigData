@@ -64,6 +64,7 @@ with DAG(
     start_date=pendulum.datetime(2026, 9, 1, tz="Europe/Madrid"),
     schedule=None,
     catchup=False,
+    max_active_runs=1,
     tags=["ingestion"],
 ) as dag:
     validate = validate_configuration()

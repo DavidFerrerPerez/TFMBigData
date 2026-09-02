@@ -1,10 +1,11 @@
 from typing import Any
 from shapely import force_2d
 from shapely.geometry import mapping
+from ingestion_engine.configuration.models import IngestionConfig
 from ingestion_engine.validation.null_validation import is_valid
 
 
-def build_asset(asset_data, characteristics: list[dict], template_data: dict, main_hierarchy_parent: int, geometry_column: str) -> dict:
+def build_asset(asset_data, characteristics: list[dict], template_data: dict, ingestion_config: IngestionConfig) -> dict:
     """
     Build the payload required to create an asset in DMD.
 
@@ -12,23 +13,26 @@ def build_asset(asset_data, characteristics: list[dict], template_data: dict, ma
         asset_data: Spark Row containing the standard asset data.
         characteristics: Characteristics populated for the current asset.
         template_data: Metadata associated with the DMD template.
-        main_hierarchy_parent: ID of the hierarchy parent where the asset will be created.
+        ingestion_config: The ingestion configuration containing DMD-related settings.
 
     Returns:
         dict: DMD asset payload.
     """
-    name = "TFMDFP - " + str(asset_data["name"])
+    name = f"{ingestion_config.dmd.name_prefix}{str(asset_data['name'])}"
 
     xv_hash_code = _get_characteristic_value(characteristics, "XV_hash_code")
 
+    code_reference_value = xv_hash_code if is_valid(xv_hash_code) else str(asset_data["id"])
+    code_reference = f"{ingestion_config.dmd.code_reference_prefix}{code_reference_value}"
+
     return {
-        "templateId": int(template_data["id"]),
+        "templateId": int(template_data[ingestion_config.dmd.template_id_field]),
         "templateCode": template_data["code"],
         "characteristics": characteristics,
         "name": name,
         "isEnabled": not bool(template_data["is_deleted"]),
         "isDeleted": bool(template_data["is_deleted"]),
-        "geometry": build_geometry(template_data, asset_data, geometry_column),
+        "geometry": build_geometry(template_data, asset_data, ingestion_config.data_quality.geometry_column),
         "origin": 1,
         "externalObjects": [
             {
@@ -36,9 +40,9 @@ def build_asset(asset_data, characteristics: list[dict], template_data: dict, ma
                 "consumerapplicationId": 1,
             }
         ],
-        "mainHierarchyParent": main_hierarchy_parent,
+        "mainHierarchyParent": ingestion_config.dmd.main_hierarchy_parent,
         "bimFileUrl": "bim_file_url",
-        "codeReference": "TFMDFP - " + (xv_hash_code if xv_hash_code is not None else name.replace(" ", "")),
+        "codeReference": code_reference,
     }
 
 
@@ -67,20 +71,18 @@ def build_geometry(template_data: dict, asset_data, geometry_column: str) -> dic
 
     asset_fields = asset_data.asDict(recursive=False)
 
-    geometry_type = template_data.get("geometry_type")
-
-    if not is_valid(geometry_type):
-
-        geometry_type = asset_data[geometry_column].geom_type
-
-        if not is_valid(geometry_type):
-            return None
-
     if geometry_column not in asset_fields:
         return None
 
     geom = asset_data[geometry_column]
+    if not is_valid(geom):
+        return None
+
+    actual_type = geom.geom_type
+    expected_type = template_data.get("geometry_type")
+
+    if is_valid(expected_type) and expected_type != actual_type:
+        raise ValueError(f"Expected geometry '{expected_type}', received '{actual_type}'")
 
     geometry = mapping(force_2d(geom))
-
     return {"type": geometry["type"], "coordinates": geometry["coordinates"]}

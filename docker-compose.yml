@@ -15,6 +15,8 @@ services:
       - airflow_data:/opt/airflow
       - ./airflow/dags:/opt/airflow/dags
       - /var/run/docker.sock:/var/run/docker.sock
+    group_add:
+      - "${DOCKER_GID}"
     networks:
       - ingestion-network
     restart: unless-stopped
