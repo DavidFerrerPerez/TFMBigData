@@ -1,4 +1,5 @@
 import json
+
 from collections import defaultdict
 from collections.abc import Iterable
 from dataclasses import asdict
@@ -7,13 +8,6 @@ from uuid import uuid4
 
 from ingestion_engine.quarantine.models import QuarantineRecord
 from ingestion_engine.storage.blob_client import BlobClient
-from ingestion_engine.quarantine.models import QuarantineRecord
-from dataclasses import asdict
-from typing import Iterable
-from urllib.parse import quote
-from uuid import uuid4
-import json
-from collections import defaultdict
 
 
 class QuarantineService:

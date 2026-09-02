@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 class DataQualityConfig(BaseModel):
     core_fields: list[str]
@@ -25,6 +25,15 @@ class AnonymizationConfig(BaseModel):
 class QuarantineConfig(BaseModel):
     enabled: bool
 
+class DMDConfig(BaseModel):
+    asset_name_prefix: str
+    code_reference_prefix: str
+    origin_id: int
+    consumer_application_id: int
+    main_hierarchy_parent: int
+    batch_size: int
+    quarantine: QuarantineConfig
+
 class IngestionConfig(BaseModel):
     available_environments: list[str]
     source: SourceConfig
@@ -32,6 +41,6 @@ class IngestionConfig(BaseModel):
     storage: StorageConfig
     data_quality: DataQualityConfig
     anonymization: AnonymizationConfig
-    main_hierarchy_parent: int
-    batch_size: int
-    quarantine: QuarantineConfig
+    dmd: DMDConfig
+
+

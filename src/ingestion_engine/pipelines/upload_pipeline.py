@@ -1,10 +1,7 @@
 import logging
 import os
-import sys
-import json
 
 from sedona.spark import SedonaContext
-from uuid import uuid4
 
 from ingestion_engine.configuration.loader import load_ingestion_config
 from ingestion_engine.configuration.validation import validate_blob_config
@@ -16,7 +13,7 @@ from ingestion_engine.logging.config import configure_logging
 from ingestion_engine.spark.session import create_spark_session
 from ingestion_engine.storage.blob_client import BlobClient
 from ingestion_engine.storage.geoparquet_reader import read_geoparquet_to_df
-from ingestion_engine.quarantine.builders import build_quarantine_records_from_df, build_upload_quarantine_records
+from ingestion_engine.quarantine.builders import build_upload_quarantine_records
 from ingestion_engine.quarantine.error_codes import ErrorCode, FailureStage
 from ingestion_engine.quarantine.quarantine_service import QuarantineService
 from ingestion_engine.quarantine.models import QuarantineRecord
@@ -37,12 +34,13 @@ def upload_asset_batch(asset_list: list[dict], template: str, dmd_api: DMDApi, q
         asset_list.clear()
         return
 
-    if "Duplicate Name Exception" in response.text:
-        logging.warning(f"Duplicate assets detected for template '{template}'.")
-        asset_list.clear()
-        return
-
     if 400 <= response.status_code < 500:
+        # Skip quarantine for duplicate name exceptions - these are expected duplicates
+        if "Duplicate Name Exception" in response.text:
+            logging.info(f"Skipped quarantine for duplicate name exception on template '{template}'.")
+            asset_list.clear()
+            return
+
         records = build_upload_quarantine_records(asset_list, template, run_id, environment, response)
 
         quarantine_service.write(records)
@@ -92,14 +90,13 @@ def upload_template(spark: SedonaContext, blob_client: BlobClient, template: str
 
     for row in df_assets.toLocalIterator():
         try:
-            row_specific_characteristics = build_characteristics(template_characteristics_list, row, dmd_api, iotcore_api)
+            row_specific_characteristics = build_characteristics(template_characteristics_list, row, dmd_api, iotcore_api, ingestion_config)
 
             asset = build_asset(
                 row,
                 row_specific_characteristics,
                 template_metadata,
-                ingestion_config.main_hierarchy_parent,
-                ingestion_config.data_quality.geometry_column,
+                ingestion_config,
             )
 
         except Exception as e:
@@ -111,8 +108,8 @@ def upload_template(spark: SedonaContext, blob_client: BlobClient, template: str
                 template_code=template,
                 source_id=str(payload.get("id")) if payload.get("id") is not None else None,
                 code_reference=payload.get("codeReference"),
-                stage=FailureStage.UPLOAD,
-                error_code=ErrorCode.DMD_REJECTED_ASSET,
+                stage=FailureStage.SERIALIZATION,
+                error_code=ErrorCode.INVALID_TYPE,
                 error_message=str(e),
                 asset=payload,
             )

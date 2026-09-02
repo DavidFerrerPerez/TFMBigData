@@ -1,6 +1,7 @@
 import logging
 from typing import Any
 
+from ingestion_engine.configuration.models import IngestionConfig
 from ingestion_engine.dmd.dmd_api import DMDApi
 from ingestion_engine.iotcore.iotcore_api import IOTCoreAPI
 from ingestion_engine.validation.null_validation import is_valid
@@ -66,7 +67,7 @@ def set_default_value(characteristic_type: str | None) -> Any:
     return ""
 
 
-def build_characteristics(template_characteristics: list[dict], row, dmd_api: DMDApi, iotcore_api: IOTCoreAPI) -> list[dict]:
+def build_characteristics(template_characteristics: list[dict], row, dmd_api: DMDApi, iotcore_api: IOTCoreAPI, ingestion_config: IngestionConfig) -> list[dict]:
     """
     Build the characteristics for a specific asset.
 
@@ -75,6 +76,7 @@ def build_characteristics(template_characteristics: list[dict], row, dmd_api: DM
         row: Spark Row containing the asset data.
         dmd_api (DMDApi): DMD API client.
         iotcore_api (IOTCoreAPI): IoT Core API client.
+        ingestion_config (IngestionConfig): Ingestion configuration containing data quality settings.
 
     Returns:
         list[dict]: Characteristics populated with the values of the asset.
@@ -88,7 +90,7 @@ def build_characteristics(template_characteristics: list[dict], row, dmd_api: DM
         value = set_default_value(characteristic_type)
 
         if characteristic_type == "iotsignal":
-            value = add_iot_signals(str(row_dict["externalId"]), iotcore_api)
+            value = add_iot_signals(str(row_dict[ingestion_config.data_quality.id_column]), iotcore_api)
         elif code in row_dict:
             value = get_characteristic_value(characteristic_type, row_dict[code], code, dmd_api)
 
@@ -187,22 +189,5 @@ def add_iot_signals(asset_id: str, iotcore_api: IOTCoreAPI) -> list[dict]:
     Returns:
         list[dict]: Signal definitions expected by DMD.
     """
-    try:
-        uids = iotcore_api.get_uids_from_tag_name(asset_id)
-
-        return [
-            {
-                "uid": uid,
-                "type": "SIGNAL",
-                "name": asset_id,
-            }
-            for uid in uids
-        ]
-
-    except AttributeError:
-        logging.warning(f"No IoT signals found for asset '{asset_id}'")
-        return []
-
-    except Exception as e:
-        logging.exception(f"Error retrieving IoT signals for asset '{asset_id}': {e}")
-        return []
+    uids = iotcore_api.get_uids_from_tag_name(asset_id)
+    return [{"uid": uid, "type": "SIGNAL", "name": asset_id} for uid in uids if uid]

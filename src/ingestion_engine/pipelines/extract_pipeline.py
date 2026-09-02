@@ -41,6 +41,7 @@ def run_extraction_pipeline(extraction_config, table_mapping, spark, blob_client
                 df = read_table_from_postgres(
                     extraction_config.source.db_schema,
                     table,
+                    extraction_config.data_quality.geometry_column,
                     spark,
                     environment,
                 )
