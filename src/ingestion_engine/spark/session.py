@@ -30,6 +30,7 @@ def create_spark_session(
             f"{account_name}.blob.core.windows.net",
             account_key,
         )
+        .config("spark.sql.parquet.int96RebaseModeInWrite", "CORRECTED")
         .getOrCreate()
     )
 
