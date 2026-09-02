@@ -27,7 +27,6 @@ pipeline {
             }
         }
 
-
         stage('Build') {
             steps {
                 echo "Branch: ${BRANCH_NAME}"
@@ -41,16 +40,21 @@ pipeline {
             }
         }
 
-
         stage('Test') {
             steps {
                 sh '''
                     TEST_CONTAINER="${IMAGE_NAME}-test-${BUILD_NUMBER}"
 
-                    # Remove an old test container if one exists
-                    docker rm -f "$TEST_CONTAINER" 2>/dev/null || true
+                    cleanup() {
+                        docker rm -f "$TEST_CONTAINER" >/dev/null 2>&1 || true
+                    }
 
-                    # Override the ingestion entrypoint to execute pytest
+                    trap cleanup EXIT
+
+                    # Remove an old test container if one exists
+                    docker rm -f "$TEST_CONTAINER" >/dev/null 2>&1 || true
+
+                    # Create a temporary container from the built image
                     docker create \
                         --name "$TEST_CONTAINER" \
                         --entrypoint pdm \
@@ -62,7 +66,13 @@ pipeline {
                         --cov-fail-under=80 \
                         --junitxml=/tmp/test-results.xml
 
-                    # Run tests but retain their exit code
+                    # Tests are not included in the production image,
+                    # so copy them into the temporary test container
+                    docker cp \
+                        tests \
+                        "$TEST_CONTAINER:/app/"
+
+                    # Run tests but retain the pytest exit code
                     set +e
 
                     docker start -a "$TEST_CONTAINER"
@@ -70,18 +80,19 @@ pipeline {
 
                     set -e
 
-                    # Copy the test report into the Jenkins workspace
+                    # Copy reports into the Jenkins workspace
                     mkdir -p reports
 
                     docker cp \
                         "$TEST_CONTAINER:/tmp/test-results.xml" \
                         reports/test-results.xml || true
 
-                    # Remove temporary container
-                    docker rm "$TEST_CONTAINER"
+                    docker cp \
+                        "$TEST_CONTAINER:/tmp/coverage.xml" \
+                        reports/coverage.xml || true
 
                     # Make the pipeline fail if pytest failed
-                    exit $TEST_EXIT_CODE
+                    exit "$TEST_EXIT_CODE"
                 '''
             }
 
@@ -95,9 +106,7 @@ pipeline {
             }
         }
 
-
         stage('Publish') {
-
             when {
                 branch 'main'
             }
@@ -112,8 +121,13 @@ pipeline {
                         passwordVariable: 'REGISTRY_TOKEN'
                     )
                 ]) {
-
                     sh '''
+                        logout_registry() {
+                            docker logout "$REGISTRY" >/dev/null 2>&1 || true
+                        }
+
+                        trap logout_registry EXIT
+
                         echo "$REGISTRY_TOKEN" | \
                             docker login "$REGISTRY" \
                             --username "$REGISTRY_USER" \
@@ -140,9 +154,7 @@ pipeline {
         }
     }
 
-
     post {
-
         success {
             echo "Pipeline ${BUILD_NUMBER} for branch ${BRANCH_NAME} completed successfully."
         }
