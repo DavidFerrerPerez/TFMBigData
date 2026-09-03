@@ -30,6 +30,9 @@ class DMDConfig(BaseModel):
     main_hierarchy_parent: int
     batch_size: int
 
+class QualityThresholdConfig(BaseModel):
+    max_quarantine_ratio: float
+
 class IngestionConfig(BaseModel):
     available_environments: list[str]
     source: SourceConfig
@@ -38,5 +41,6 @@ class IngestionConfig(BaseModel):
     data_quality: DataQualityConfig
     anonymization: AnonymizationConfig
     dmd: DMDConfig
+    quality_threshold: QualityThresholdConfig
 
 

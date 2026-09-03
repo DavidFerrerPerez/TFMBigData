@@ -18,12 +18,15 @@ from ingestion_engine.storage.path_utils import run_id_to_path
 from ingestion_engine.quarantine.error_codes import ErrorCode, FailureStage
 from ingestion_engine.quarantine.quarantine_service import QuarantineService
 from ingestion_engine.quarantine.models import QuarantineRecord
-from ingestion_engine.pipelines.errors import PipelineExecutionError
+from ingestion_engine.pipelines.errors import PipelineExecutionError, QuarantineThresholdExceededError
+from ingestion_engine.pipelines.metrics import TemplateCounts
 
 
-def upload_asset_batch(asset_list: list[dict], template: str, dmd_api: DMDApi, quarantine_service: QuarantineService, run_id: str, environment: str) -> None:
+def upload_asset_batch(asset_list: list[dict], template: str, dmd_api: DMDApi, quarantine_service: QuarantineService, run_id: str, environment: str, counts: TemplateCounts) -> None:
     if not asset_list:
         return
+
+    batch_size = len(asset_list)
 
     try:
         response = dmd_api.create_assets(asset_list)
@@ -32,18 +35,21 @@ def upload_asset_batch(asset_list: list[dict], template: str, dmd_api: DMDApi, q
         raise
 
     if response.ok:
+        counts.add_written(batch_size)
         asset_list.clear()
         return
 
     if 400 <= response.status_code < 500:
-        # Skip quarantine for duplicate name exceptions - these are expected duplicates
         if "Duplicate Name Exception" in response.text:
             logging.info(f"Skipped quarantine for duplicate name exception on template '{template}'.")
+            counts.add_written(batch_size)
             asset_list.clear()
+            return
 
         records = build_upload_quarantine_records(asset_list, template, run_id, environment, response)
 
         quarantine_service.write(records)
+        counts.add_quarantined(len(records))
 
         logging.warning(f"Quarantined {len(records)} assets rejected by DMD for template '{template}'.")
         asset_list.clear()
@@ -88,6 +94,7 @@ def upload_template(spark: SedonaContext, blob_client: BlobClient, template: str
 
     asset_list = []
     quarantine_records = []
+    counts = TemplateCounts()
 
     for row in df_assets.toLocalIterator():
         try:
@@ -116,6 +123,7 @@ def upload_template(spark: SedonaContext, blob_client: BlobClient, template: str
             )
 
             quarantine_records.append(record)
+            counts.add_quarantined(1)
 
             logging.warning(f"Asset quarantined while building template '{template}': {e}")
             continue
@@ -123,15 +131,23 @@ def upload_template(spark: SedonaContext, blob_client: BlobClient, template: str
         asset_list.append(asset)
 
         if len(asset_list) >= ingestion_config.dmd.batch_size:
-            upload_asset_batch(asset_list, template, dmd_api, quarantine_service, run_id, environment)
+            upload_asset_batch(asset_list, template, dmd_api, quarantine_service, run_id, environment, counts)
 
     if asset_list:
-        upload_asset_batch(asset_list, template, dmd_api, quarantine_service, run_id, environment)
+        upload_asset_batch(asset_list, template, dmd_api, quarantine_service, run_id, environment, counts)
 
     if quarantine_records:
         quarantine_service.write(quarantine_records)
 
-    logging.info(f"Template {template} uploaded successfully.")
+    if counts.exceeds_threshold(ingestion_config.quality_threshold.max_quarantine_ratio):
+        raise QuarantineThresholdExceededError(
+            template, counts.quarantined, counts.total, ingestion_config.quality_threshold.max_quarantine_ratio
+        )
+
+    logging.info(
+        f"Template {template} uploaded successfully "
+        f"({counts.written} written, {counts.quarantined} quarantined)."
+    )
 
 
 def run_upload_pipeline(spark: SedonaContext, blob_client: BlobClient, ingestion_config, dmd_api: DMDApi, iotcore_api: IOTCoreAPI, quarantine_service: QuarantineService, run_id: str, environment: str) -> None:
