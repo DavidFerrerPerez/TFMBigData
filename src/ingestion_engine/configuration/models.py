@@ -22,9 +22,6 @@ class AnonymizationConfig(BaseModel):
     text_columns: list[str]
     geometry_columns: list[str]
 
-class QuarantineConfig(BaseModel):
-    enabled: bool
-
 class DMDConfig(BaseModel):
     asset_name_prefix: str
     code_reference_prefix: str
@@ -32,7 +29,6 @@ class DMDConfig(BaseModel):
     consumer_application_id: int
     main_hierarchy_parent: int
     batch_size: int
-    quarantine: QuarantineConfig
 
 class IngestionConfig(BaseModel):
     available_environments: list[str]

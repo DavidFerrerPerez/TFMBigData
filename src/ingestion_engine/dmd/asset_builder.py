@@ -18,7 +18,7 @@ def build_asset(asset_data, characteristics: list[dict], template_data: dict, in
     Returns:
         dict: DMD asset payload.
     """
-    name = f"{ingestion_config.dmd.name_prefix}{str(asset_data['name'])}"
+    name = f"{ingestion_config.dmd.asset_name_prefix}{str(asset_data['name'])}"
 
     xv_hash_code = _get_characteristic_value(characteristics, "XV_hash_code")
 
@@ -26,7 +26,7 @@ def build_asset(asset_data, characteristics: list[dict], template_data: dict, in
     code_reference = f"{ingestion_config.dmd.code_reference_prefix}{code_reference_value}"
 
     return {
-        "templateId": int(template_data[ingestion_config.dmd.template_id_field]),
+        "templateId": int(template_data["id"]),
         "templateCode": template_data["code"],
         "characteristics": characteristics,
         "name": name,
@@ -80,9 +80,6 @@ def build_geometry(template_data: dict, asset_data, geometry_column: str) -> dic
 
     actual_type = geom.geom_type
     expected_type = template_data.get("geometry_type")
-
-    if is_valid(expected_type) and expected_type != actual_type:
-        raise ValueError(f"Expected geometry '{expected_type}', received '{actual_type}'")
 
     geometry = mapping(force_2d(geom))
     return {"type": geometry["type"], "coordinates": geometry["coordinates"]}

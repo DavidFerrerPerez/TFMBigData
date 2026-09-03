@@ -21,11 +21,10 @@ def _make_template(template_id=42, code="PUMP", is_deleted=False, geometry_type=
     }
 
 
-def _make_ingestion_config(name_prefix="TFMDFP - ", code_reference_prefix="TFMDFP - ", template_id_field="id", main_hierarchy_parent=1, geometry_column="geometry"):
+def _make_ingestion_config(name_prefix="TFMDFP - ", code_reference_prefix="TFMDFP - ", main_hierarchy_parent=1, geometry_column="geometry"):
     config = MagicMock()
-    config.dmd.name_prefix = name_prefix
+    config.dmd.asset_name_prefix = name_prefix
     config.dmd.code_reference_prefix = code_reference_prefix
-    config.dmd.template_id_field = template_id_field
     config.dmd.main_hierarchy_parent = main_hierarchy_parent
     config.data_quality.geometry_column = geometry_column
     return config

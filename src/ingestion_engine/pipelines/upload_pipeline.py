@@ -14,6 +14,7 @@ from ingestion_engine.spark.session import create_spark_session
 from ingestion_engine.storage.blob_client import BlobClient
 from ingestion_engine.storage.geoparquet_reader import read_geoparquet_to_df
 from ingestion_engine.quarantine.builders import build_upload_quarantine_records
+from ingestion_engine.storage.path_utils import run_id_to_path
 from ingestion_engine.quarantine.error_codes import ErrorCode, FailureStage
 from ingestion_engine.quarantine.quarantine_service import QuarantineService
 from ingestion_engine.quarantine.models import QuarantineRecord
@@ -39,7 +40,6 @@ def upload_asset_batch(asset_list: list[dict], template: str, dmd_api: DMDApi, q
         if "Duplicate Name Exception" in response.text:
             logging.info(f"Skipped quarantine for duplicate name exception on template '{template}'.")
             asset_list.clear()
-            return
 
         records = build_upload_quarantine_records(asset_list, template, run_id, environment, response)
 
@@ -70,7 +70,8 @@ def upload_template(spark: SedonaContext, blob_client: BlobClient, template: str
     logging.info(f"Uploading template {template}...")
 
     try:
-        df_assets = read_geoparquet_to_df(spark, blob_client, f"{ingestion_config.storage.paths.standard}/run_id={run_id}/{template}.parquet")
+        run_id_path = run_id_to_path(run_id)
+        df_assets = read_geoparquet_to_df(spark, blob_client, f"{ingestion_config.storage.paths.standard}/run_id={run_id_path}/{template}.parquet")
     except Exception as e:
         raise RuntimeError(f"Could not read Standard data for template '{template}'.") from e
 
@@ -121,7 +122,7 @@ def upload_template(spark: SedonaContext, blob_client: BlobClient, template: str
 
         asset_list.append(asset)
 
-        if len(asset_list) >= ingestion_config.batch_size:
+        if len(asset_list) >= ingestion_config.dmd.batch_size:
             upload_asset_batch(asset_list, template, dmd_api, quarantine_service, run_id, environment)
 
     if asset_list:

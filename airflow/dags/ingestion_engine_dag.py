@@ -53,7 +53,7 @@ def create_pipeline_task(stage: str) -> DockerOperator:
         docker_conn_id=DOCKER_REGISTRY_CONN_ID,
         network_mode="ingestion-network",
         private_environment=PRIVATE_ENVIRONMENT,
-        force_pull=True,
+        force_pull=os.getenv("INGESTION_FORCE_PULL", "false").lower() == "true",
         auto_remove="success",
         mount_tmp_dir=False,
     )

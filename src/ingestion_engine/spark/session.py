@@ -30,6 +30,21 @@ def create_spark_session(
             f"{account_name}.blob.core.windows.net",
             account_key,
         )
+        # Parquet write configuration
+        .config("spark.sql.parquet.int96RebaseModeInWrite", "CORRECTED")
+        # Azure Blob Storage optimization - disable rename optimization to use copy+delete
+        .config("spark.hadoop.fs.azure.rename.optimization", "false")
+        # Use v2 algorithm for better reliability
+        .config("mapreduce.fileoutputcommitter.algorithm.version", "2")
+        # Disable thread pool for Azure operations to avoid timeouts
+        .config("spark.hadoop.fs.azure.thread.pool.size", "1")
+        # Increase timeout for Azure operations
+        .config("spark.hadoop.fs.azure.timeout", "90000")
+        # Enable optimistic retry for transient failures
+        .config("spark.hadoop.fs.azure.block.size", "238435456")
+        # Skip the final cleanup of temporary directories on failure
+        # This prevents DirectoryIsNotEmpty errors
+        .config("spark.hadoop.mapreduce.fileoutputcommitter.cleanup-failures.ignored", "true")
         .getOrCreate()
     )
 
