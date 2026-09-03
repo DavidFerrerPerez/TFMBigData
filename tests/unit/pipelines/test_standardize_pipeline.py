@@ -137,18 +137,88 @@ def test_process_template_tables_empty_table_list_returns_empty(mock_read, mock_
 def test_run_pipeline_processes_all_templates(mock_write, mock_validate, mock_anon, mock_fill, mock_unify, mock_process, mock_quarantine):
     ingestion_config = MagicMock()
     ingestion_config.templates = ["template1", "template2"]
+    ingestion_config.quality_threshold.max_quarantine_ratio = 0.2
 
     mock_process.return_value = [MagicMock()]
     mock_unify.return_value = MagicMock()
     mock_fill.return_value = MagicMock()
     mock_anon.return_value = MagicMock()
-    mock_validate.return_value = (MagicMock(), MagicMock())
+
+    valid_df = MagicMock()
+    valid_df.count.return_value = 10
+    rejected_df = MagicMock()
+    rejected_df.isEmpty.return_value = True
+    mock_validate.return_value = (valid_df, rejected_df)
 
     run_standardization_pipeline(MagicMock(), MagicMock(), ingestion_config, {}, MagicMock(), MagicMock(), "2024-01-15T10:30:45.123456", "dev")
 
     assert mock_process.call_count == 2
     assert mock_unify.call_count == 2
     assert mock_write.call_count == 2
+
+
+@patch("ingestion_engine.pipelines.standardize_pipeline.build_quarantine_records_from_df")
+@patch("ingestion_engine.pipelines.standardize_pipeline.process_template_tables")
+@patch("ingestion_engine.pipelines.standardize_pipeline.unify_tables")
+@patch("ingestion_engine.pipelines.standardize_pipeline.fill_name")
+@patch("ingestion_engine.pipelines.standardize_pipeline.anonymize_dataframe")
+@patch("ingestion_engine.pipelines.standardize_pipeline.validate_dataframe")
+@patch("ingestion_engine.pipelines.standardize_pipeline.write_df_to_geoparquet")
+@patch("builtins.open", mock_open(read_data="{}"))
+def test_run_pipeline_fails_template_when_quarantine_ratio_exceeds_threshold(mock_write, mock_validate, mock_anon, mock_fill, mock_unify, mock_process, mock_quarantine):
+    ingestion_config = MagicMock()
+    ingestion_config.templates = ["template1"]
+    ingestion_config.quality_threshold.max_quarantine_ratio = 0.2
+
+    mock_process.return_value = [MagicMock()]
+    mock_unify.return_value = MagicMock()
+    mock_fill.return_value = MagicMock()
+    mock_anon.return_value = MagicMock()
+    mock_quarantine.return_value = []
+
+    valid_df = MagicMock()
+    valid_df.count.return_value = 4
+    rejected_df = MagicMock()
+    rejected_df.isEmpty.return_value = False
+    rejected_df.count.return_value = 6
+    mock_validate.return_value = (valid_df, rejected_df)
+
+    with pytest.raises(PipelineExecutionError, match="exceeds the allowed threshold"):
+        run_standardization_pipeline(MagicMock(), MagicMock(), ingestion_config, {}, MagicMock(), MagicMock(), "2024-01-15T10:30:45.123456", "dev")
+
+    # The valid data is still written even though the template is marked as failed.
+    mock_write.assert_called_once()
+
+
+@patch("ingestion_engine.pipelines.standardize_pipeline.build_quarantine_records_from_df")
+@patch("ingestion_engine.pipelines.standardize_pipeline.process_template_tables")
+@patch("ingestion_engine.pipelines.standardize_pipeline.unify_tables")
+@patch("ingestion_engine.pipelines.standardize_pipeline.fill_name")
+@patch("ingestion_engine.pipelines.standardize_pipeline.anonymize_dataframe")
+@patch("ingestion_engine.pipelines.standardize_pipeline.validate_dataframe")
+@patch("ingestion_engine.pipelines.standardize_pipeline.write_df_to_geoparquet")
+@patch("builtins.open", mock_open(read_data="{}"))
+def test_run_pipeline_passes_template_when_quarantine_ratio_within_threshold(mock_write, mock_validate, mock_anon, mock_fill, mock_unify, mock_process, mock_quarantine):
+    ingestion_config = MagicMock()
+    ingestion_config.templates = ["template1"]
+    ingestion_config.quality_threshold.max_quarantine_ratio = 0.5
+
+    mock_process.return_value = [MagicMock()]
+    mock_unify.return_value = MagicMock()
+    mock_fill.return_value = MagicMock()
+    mock_anon.return_value = MagicMock()
+    mock_quarantine.return_value = []
+
+    valid_df = MagicMock()
+    valid_df.count.return_value = 8
+    rejected_df = MagicMock()
+    rejected_df.isEmpty.return_value = False
+    rejected_df.count.return_value = 2
+    mock_validate.return_value = (valid_df, rejected_df)
+
+    run_standardization_pipeline(MagicMock(), MagicMock(), ingestion_config, {}, MagicMock(), MagicMock(), "2024-01-15T10:30:45.123456", "dev")
+
+    mock_write.assert_called_once()
 
 
 @patch("ingestion_engine.pipelines.standardize_pipeline.build_quarantine_records_from_df")

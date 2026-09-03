@@ -1,5 +1,5 @@
 # Ignore .env
-*.env
+config.env
 
 # Python environment files
 .python-version

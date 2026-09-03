@@ -18,7 +18,8 @@ from ingestion_engine.configuration.validation import validate_blob_config
 from ingestion_engine.quarantine.builders import build_quarantine_records_from_df
 from ingestion_engine.storage.path_utils import run_id_to_path
 from ingestion_engine.transformation.geometry_caster import cast_geometry
-from ingestion_engine.pipelines.errors import PipelineExecutionError
+from ingestion_engine.pipelines.errors import PipelineExecutionError, QuarantineThresholdExceededError
+from ingestion_engine.pipelines.metrics import TemplateCounts
 from ingestion_engine.quarantine.error_codes import ErrorCode, FailureStage
 from ingestion_engine.quarantine.quarantine_service import QuarantineService
 
@@ -96,6 +97,7 @@ def run_standardization_pipeline(spark, blob_client: BlobClient, ingestion_confi
     for template in ingestion_config.templates:
         logging.info(f"Standardizing template '{template}'.")
         quarantine_records = []
+        counts = TemplateCounts()
 
         try:
             template_metadata = dmdapi.get_template_metadata(template)
@@ -115,6 +117,7 @@ def run_standardization_pipeline(spark, blob_client: BlobClient, ingestion_confi
             if not rejected_validation_df.isEmpty():
                 rejected_count = rejected_validation_df.count()
                 logging.warning(f"Rejected {rejected_count} rows during final validation for template '{template}'.")
+                counts.add_quarantined(rejected_count)
 
                 quarantine_records.extend(
                     build_quarantine_records_from_df(
@@ -128,6 +131,8 @@ def run_standardization_pipeline(spark, blob_client: BlobClient, ingestion_confi
                     )
                 )
 
+            counts.add_written(valid_df.count())
+
             run_id_path = run_id_to_path(run_id)
 
             write_df_to_geoparquet(
@@ -136,7 +141,15 @@ def run_standardization_pipeline(spark, blob_client: BlobClient, ingestion_confi
                 f"{ingestion_config.storage.paths.standard}/run_id={run_id_path}/{template}.parquet",
             )
 
-            logging.info(f"Template '{template}' standardized successfully.")
+            if counts.exceeds_threshold(ingestion_config.quality_threshold.max_quarantine_ratio):
+                raise QuarantineThresholdExceededError(
+                    template, counts.quarantined, counts.total, ingestion_config.quality_threshold.max_quarantine_ratio
+                )
+
+            logging.info(
+                f"Template '{template}' standardized successfully "
+                f"({counts.written} written, {counts.quarantined} quarantined)."
+            )
 
         except Exception as e:
             logging.exception(f"Standardization failed for template '{template}'.")
