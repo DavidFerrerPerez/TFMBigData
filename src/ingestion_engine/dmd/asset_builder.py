@@ -18,7 +18,7 @@ def build_asset(asset_data, characteristics: list[dict], template_data: dict, in
     Returns:
         dict: DMD asset payload.
     """
-    name = f"{ingestion_config.dmd.name_prefix}{str(asset_data['name'])}"
+    name = f"{ingestion_config.dmd.asset_name_prefix}{str(asset_data['name'])}"
 
     xv_hash_code = _get_characteristic_value(characteristics, "XV_hash_code")
 
