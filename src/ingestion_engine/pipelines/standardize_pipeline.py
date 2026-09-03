@@ -106,7 +106,7 @@ def run_standardization_pipeline(spark, blob_client: BlobClient, ingestion_confi
             df_with_name = fill_name(unified_df)
             df_geom_casted = cast_geometry(
                 df_with_name,
-                template_metadata.get("geometryType"),
+                template_metadata.get("geometry_type"),
                 ingestion_config.data_quality.geometry_column,
             )
             df_anonymized = anonymize_dataframe(df_geom_casted, ingestion_config)

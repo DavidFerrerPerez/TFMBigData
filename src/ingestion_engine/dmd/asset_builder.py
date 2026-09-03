@@ -81,8 +81,5 @@ def build_geometry(template_data: dict, asset_data, geometry_column: str) -> dic
     actual_type = geom.geom_type
     expected_type = template_data.get("geometry_type")
 
-    if is_valid(expected_type) and expected_type != actual_type:
-        raise ValueError(f"Expected geometry '{expected_type}', received '{actual_type}'")
-
     geometry = mapping(force_2d(geom))
     return {"type": geometry["type"], "coordinates": geometry["coordinates"]}
