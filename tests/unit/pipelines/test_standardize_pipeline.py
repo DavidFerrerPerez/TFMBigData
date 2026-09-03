@@ -79,7 +79,7 @@ def test_process_template_tables_returns_transformed_dfs(mock_read, mock_transfo
     mock_read.return_value = MagicMock()
     mock_transform.return_value = MagicMock()
 
-    result = process_template_tables(spark, blob_client, ingestion_config, table_mapping, dmdapi, "template1", "2024-01-15T10:30:45.123456", {})
+    result = process_template_tables(spark, blob_client, ingestion_config, table_mapping, dmdapi, "template1", "2024-01-15T10:30:45.123456", {}, 12)
 
     assert len(result) == 2
     assert mock_read.call_count == 2
@@ -104,7 +104,7 @@ def test_process_template_tables_skips_tables_that_fail_to_read(mock_read, mock_
     mock_transform.return_value = MagicMock()
 
     with pytest.raises(Exception, match="blob not found"):
-        process_template_tables(spark, blob_client, ingestion_config, table_mapping, dmdapi, "template1", "2024-01-15T10:30:45.123456", {})
+        process_template_tables(spark, blob_client, ingestion_config, table_mapping, dmdapi, "template1", "2024-01-15T10:30:45.123456", {}, 12)
 
 
 @patch("ingestion_engine.pipelines.standardize_pipeline.transform_with_template_schema")
@@ -119,7 +119,7 @@ def test_process_template_tables_empty_table_list_returns_empty(mock_read, mock_
     ingestion_config.data_quality.core_fields = ["id"]
 
     with pytest.raises(ValueError, match="No source tables configured"):
-        process_template_tables(MagicMock(), MagicMock(), ingestion_config, {"tmpl": []}, dmdapi, "tmpl", "2024-01-15T10:30:45.123456", {})
+        process_template_tables(MagicMock(), MagicMock(), ingestion_config, {"tmpl": []}, dmdapi, "tmpl", "2024-01-15T10:30:45.123456", {}, 12)
 
     mock_read.assert_not_called()
 
