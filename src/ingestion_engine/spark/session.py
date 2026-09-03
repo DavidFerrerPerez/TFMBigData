@@ -1,7 +1,6 @@
 import os
-
 from sedona.spark import SedonaContext
-
+import logging
 
 def create_spark_session(
     app_name: str = "ingestion-engine",
@@ -21,7 +20,7 @@ def create_spark_session(
                     "org.postgresql:postgresql:42.7.13",
                     "org.apache.sedona:sedona-spark-3.5_2.12:1.7.1",
                     "org.datasyslab:geotools-wrapper:1.7.1-28.5",
-                    "org.apache.hadoop:hadoop-azure:3.3.4",
+                    "org.apache.hadoop:hadoop-azure:3.4.0",
                 ]
             ),
         )
@@ -32,20 +31,26 @@ def create_spark_session(
         )
         # Parquet write configuration
         .config("spark.sql.parquet.int96RebaseModeInWrite", "CORRECTED")
-        # Azure Blob Storage optimization - disable rename optimization to use copy+delete
-        .config("spark.hadoop.fs.azure.rename.optimization", "false")
-        # Use v2 algorithm for better reliability
-        .config("mapreduce.fileoutputcommitter.algorithm.version", "2")
-        # Disable thread pool for Azure operations to avoid timeouts
-        .config("spark.hadoop.fs.azure.thread.pool.size", "1")
-        # Increase timeout for Azure operations
-        .config("spark.hadoop.fs.azure.timeout", "90000")
-        # Enable optimistic retry for transient failures
-        .config("spark.hadoop.fs.azure.block.size", "238435456")
-        # Skip the final cleanup of temporary directories on failure
-        # This prevents DirectoryIsNotEmpty errors
+        
+        # ===== Hadoop configuration =====
+        .config("spark.hadoop.mapreduce.fileoutputcommitter.algorithm.version", "2")
         .config("spark.hadoop.mapreduce.fileoutputcommitter.cleanup-failures.ignored", "true")
+        
+        # Azure Blob Storage optimization
+        .config("spark.hadoop.fs.azure.rename.optimization", "false")
+        .config("spark.hadoop.fs.azure.thread.pool.size", "32")
+        .config("spark.hadoop.fs.azure.timeout", "90000")
+        .config("spark.hadoop.fs.azure.block.size", "268435456")
+        .config("spark.hadoop.fs.azure.fast.upload", "true")
+        .config("spark.hadoop.fs.azure.fast.upload.block.size", "268435456")
+        
+        # Suppress Azure file system warnings
+        .config("spark.driver.extraJavaOptions", "-Dlog4j.logger.org.apache.hadoop.fs.azure=WARN")
+        
         .getOrCreate()
     )
 
+    # Suppress Hadoop Azure logger at Python level
+    logging.getLogger("py4j.java_gateway").setLevel(logging.WARNING)
+    
     return SedonaContext.create(config)
