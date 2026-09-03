@@ -1,6 +1,3 @@
-from pathlib import Path
-from tempfile import TemporaryDirectory
-
 from pyspark.sql import DataFrame
 
 from ingestion_engine.storage.blob_client import BlobClient
@@ -9,7 +6,11 @@ from ingestion_engine.storage.blob_client import BlobClient
 def write_df_to_geoparquet(df: DataFrame, blob_client: BlobClient, blob_path: str, overwrite: bool = True) -> None:
 
     """
-    Write a Spark DataFrame as GeoParquet and upload it to Azure Blob Storage.
+    Write a Spark DataFrame as GeoParquet directly to Azure Blob Storage.
+
+    The DataFrame is written in parallel using Spark's native Hadoop-Azure
+    connector, preserving the existing partitioning instead of collapsing
+    it to a single partition/file.
 
     Args:
         df: Spark DataFrame containing a geometry column.
@@ -18,19 +19,9 @@ def write_df_to_geoparquet(df: DataFrame, blob_client: BlobClient, blob_path: st
         overwrite: Whether existing blobs should be overwritten.
     """
 
-    with TemporaryDirectory(prefix="geoparquet_") as temp_dir:
-        output_directory = Path(temp_dir) / "data"
+    spark_path = blob_client.get_spark_path(blob_path)
 
-        dataframe_to_write = df.coalesce(1)
-
-        (dataframe_to_write.write
-            .format("geoparquet")
-            .mode("overwrite")
-            .save(output_directory.as_uri()))
-
-        parquet_files = list(output_directory.glob("part-*.parquet"))
-
-        if len(parquet_files) != 1:
-                raise RuntimeError(f"Expected exactly one GeoParquet file, but found {len(parquet_files)}")
-
-        blob_client.upload_file(local_path=parquet_files[0], blob_path=blob_path, overwrite=overwrite)
+    (df.write
+        .format("geoparquet")
+        .mode("overwrite" if overwrite else "errorifexists")
+        .save(spark_path))
