@@ -31,6 +31,8 @@ def create_spark_session(
             account_key,
         )
         .config("spark.sql.parquet.int96RebaseModeInWrite", "CORRECTED")
+        .config("spark.hadoop.fs.azure.rename.optimization", "false")
+        .config("mapreduce.fileoutputcommitter.algorithm.version", "2")
         .getOrCreate()
     )
 
