@@ -41,7 +41,7 @@ def create_spark_session(
         # Increase timeout for Azure operations
         .config("spark.hadoop.fs.azure.timeout", "90000")
         # Enable optimistic retry for transient failures
-        .config("spark.hadoop.fs.azure.block.size", "256m")
+        .config("spark.hadoop.fs.azure.block.size", "238435456")
         # Skip the final cleanup of temporary directories on failure
         # This prevents DirectoryIsNotEmpty errors
         .config("spark.hadoop.mapreduce.fileoutputcommitter.cleanup-failures.ignored", "true")
