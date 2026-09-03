@@ -1,6 +1,8 @@
 import pytest
 from unittest.mock import MagicMock, patch, mock_open
 
+from ingestion_engine.pipelines.errors import PipelineExecutionError, QuarantineThresholdExceededError
+from ingestion_engine.pipelines.metrics import TemplateCounts
 from ingestion_engine.pipelines.upload_pipeline import (
     upload_asset_batch,
     run_upload_pipeline,
@@ -33,26 +35,33 @@ def _make_duplicate_response():
 
 def test_upload_asset_batch_does_nothing_when_list_is_empty():
     dmd_api = MagicMock()
-    upload_asset_batch([], "my_template", dmd_api, MagicMock(), "run-1", "dev")
+    counts = TemplateCounts()
+    upload_asset_batch([], "my_template", dmd_api, MagicMock(), "run-1", "dev", counts)
     dmd_api.create_assets.assert_not_called()
+    assert counts.written == 0
+    assert counts.quarantined == 0
 
 
 def test_upload_asset_batch_calls_create_assets_with_the_assets():
     dmd_api = MagicMock()
     dmd_api.create_assets.return_value = _make_ok_response()
     assets = [{"name": "Asset A"}, {"name": "Asset B"}]
+    counts = TemplateCounts()
 
-    upload_asset_batch(assets, "my_template", dmd_api, MagicMock(), "run-1", "dev")
+    upload_asset_batch(assets, "my_template", dmd_api, MagicMock(), "run-1", "dev", counts)
 
     dmd_api.create_assets.assert_called_once()
+    assert counts.written == 2
+    assert counts.quarantined == 0
 
 
 def test_upload_asset_batch_clears_the_list_after_upload():
     dmd_api = MagicMock()
     dmd_api.create_assets.return_value = _make_ok_response()
     assets = [{"name": "Asset A"}]
+    counts = TemplateCounts()
 
-    upload_asset_batch(assets, "my_template", dmd_api, MagicMock(), "run-1", "dev")
+    upload_asset_batch(assets, "my_template", dmd_api, MagicMock(), "run-1", "dev", counts)
 
     assert assets == []
 
@@ -62,10 +71,13 @@ def test_upload_asset_batch_quarantines_assets_when_dmd_rejects_them():
     dmd_api.create_assets.return_value = _make_error_response(status_code=422)
     quarantine_service = MagicMock()
     assets = [{"name": "Asset A", "codeReference": "REF-1"}]
+    counts = TemplateCounts()
 
-    upload_asset_batch(assets, "my_template", dmd_api, quarantine_service, "run-1", "dev")
+    upload_asset_batch(assets, "my_template", dmd_api, quarantine_service, "run-1", "dev", counts)
 
     quarantine_service.write.assert_called_once()
+    assert counts.written == 0
+    assert counts.quarantined == 1
 
 
 def test_upload_asset_batch_calls_quarantine_on_duplicate_name_exception():
@@ -73,20 +85,24 @@ def test_upload_asset_batch_calls_quarantine_on_duplicate_name_exception():
     dmd_api.create_assets.return_value = _make_duplicate_response()
     quarantine_service = MagicMock()
     assets = [{"name": "Asset A"}]
+    counts = TemplateCounts()
 
     with patch("ingestion_engine.pipelines.upload_pipeline.logging"):
-        upload_asset_batch(assets, "my_template", dmd_api, quarantine_service, "run-1", "dev")
+        upload_asset_batch(assets, "my_template", dmd_api, quarantine_service, "run-1", "dev", counts)
 
-    quarantine_service.write.assert_called_once()
+    quarantine_service.write.assert_not_called()
+    assert counts.written == 1
+    assert counts.quarantined == 0
 
 
 def test_upload_asset_batch_reraises_api_exception():
     dmd_api = MagicMock()
     dmd_api.create_assets.side_effect = Exception("Connection refused")
     assets = [{"name": "Asset A"}]
+    counts = TemplateCounts()
 
     with pytest.raises(Exception, match="Connection refused"):
-        upload_asset_batch(assets, "my_template", dmd_api, MagicMock(), "run-1", "dev")
+        upload_asset_batch(assets, "my_template", dmd_api, MagicMock(), "run-1", "dev", counts)
 
 
 # run_upload_pipeline
@@ -109,3 +125,13 @@ def test_run_upload_pipeline_does_nothing_when_no_templates_are_configured(mock_
     run_upload_pipeline(MagicMock(), MagicMock(), ingestion_config, MagicMock(), MagicMock(), MagicMock(), "run-1", "dev")
 
     mock_upload_template.assert_not_called()
+
+
+@patch("ingestion_engine.pipelines.upload_pipeline.upload_template")
+def test_run_upload_pipeline_fails_when_template_exceeds_quarantine_threshold(mock_upload_template):
+    ingestion_config = MagicMock()
+    ingestion_config.templates = ["template_a"]
+    mock_upload_template.side_effect = QuarantineThresholdExceededError("template_a", 6, 10, 0.2)
+
+    with pytest.raises(PipelineExecutionError, match="exceeds the allowed threshold"):
+        run_upload_pipeline(MagicMock(), MagicMock(), ingestion_config, MagicMock(), MagicMock(), MagicMock(), "run-1", "dev")

@@ -23,24 +23,25 @@ data_quality:
     - <CORE_FIELD_1>
     - <CORE_FIELD_2>
     - <CORE_FIELD_3>
-
   non_null_fields:
     - <NON_NULL_FIELD_1>
     - <NON_NULL_FIELD_2>
-
   id_column: <ID_COLUMN>
   geometry_column: <GEOMETRY_COLUMN>
 
 anonymization:
   text_columns:
-    - <TEXT_COLUMN_1>
-
+      - <TEXT_COLUMN_1>
   geometry_columns:
     - <GEOMETRY_COLUMN_1>
 
-main_hierarchy_parent: <MAIN_HIERARCHY_PARENT_ID>
+dmd:
+  asset_name_prefix: "<ASSET_NAME_PREFIX>"
+  code_reference_prefix: "<CODE_REFERENCE_PREFIX>"
+  origin_id: <ORIGIN_ID>
+  consumer_application_id: <CONSUMER_APPLICATION_ID>
+  main_hierarchy_parent: <MAIN_HIERARCHY_PARENT_ID>
+  batch_size: <BATCH_SIZE>
 
-batch_size: <BATCH_SIZE>
-
-quarantine:
-  enabled: <true|false>
+quality_threshold:
+  max_quarantine_ratio: <MAX_QUARANTINE_RATIO>
