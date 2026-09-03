@@ -40,7 +40,6 @@ def upload_asset_batch(asset_list: list[dict], template: str, dmd_api: DMDApi, q
         if "Duplicate Name Exception" in response.text:
             logging.info(f"Skipped quarantine for duplicate name exception on template '{template}'.")
             asset_list.clear()
-            return
 
         records = build_upload_quarantine_records(asset_list, template, run_id, environment, response)
 
@@ -123,7 +122,7 @@ def upload_template(spark: SedonaContext, blob_client: BlobClient, template: str
 
         asset_list.append(asset)
 
-        if len(asset_list) >= ingestion_config.batch_size:
+        if len(asset_list) >= ingestion_config.dmd.batch_size:
             upload_asset_batch(asset_list, template, dmd_api, quarantine_service, run_id, environment)
 
     if asset_list:

@@ -25,27 +25,27 @@
     },
     "XV_installation_date": {
         "field": "installdate",
-        "default_value": "1900-01-01T11:22:33"
+        "default_value": ""
     },
     "XV_commissioning_date": {
         "field": "inservicedate",
-        "default_value": "1900-01-01T11:22:33"
+        "default_value": ""
     },
     "XV_decommission_date": {
         "field": "retireddate",
-        "default_value": "1900-01-01T11:22:33"
+        "default_value": ""
     },
     "XV_removal_date": {
         "field": "retireddate",
-        "default_value": "1900-01-01T11:22:33"
+        "default_value": ""
     },
     "XV_update_date": {
         "field": "lastupdate",
-        "default_value": "1900-01-01T11:22:33"
+        "default_value": ""
     },
     "XV_registration_date": {
         "field": "creationdate",
-        "default_value": "1900-01-01T11:22:33"
+        "default_value": ""
     },
     "XV_lifecycle_status": {
         "field": "lifecyclestatus",
