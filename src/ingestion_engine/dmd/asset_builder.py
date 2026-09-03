@@ -26,7 +26,7 @@ def build_asset(asset_data, characteristics: list[dict], template_data: dict, in
     code_reference = f"{ingestion_config.dmd.code_reference_prefix}{code_reference_value}"
 
     return {
-        "templateId": int(template_data[ingestion_config.dmd.template_id_field]),
+        "templateId": int(template_data["id"]),
         "templateCode": template_data["code"],
         "characteristics": characteristics,
         "name": name,
