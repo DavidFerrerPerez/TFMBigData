@@ -17,12 +17,13 @@ from ingestion_engine.spark.session import create_spark_session
 from ingestion_engine.configuration.validation import validate_blob_config
 from ingestion_engine.quarantine.builders import build_quarantine_records_from_df
 from ingestion_engine.storage.path_utils import run_id_to_path
+from ingestion_engine.transformation.geometry_caster import cast_geometry
 from ingestion_engine.pipelines.errors import PipelineExecutionError
 from ingestion_engine.quarantine.error_codes import ErrorCode, FailureStage
 from ingestion_engine.quarantine.quarantine_service import QuarantineService
 
 
-def process_template_tables(spark, blob_client: BlobClient, ingestion_config, table_mapping, dmdapi, template: str, run_id: str, characteristics_mapping: dict) -> list:
+def process_template_tables(spark, blob_client: BlobClient, ingestion_config, table_mapping, dmdapi, template: str, run_id: str, characteristics_mapping: dict, template_id: int) -> list:
     """
     Process the tables for a given template.
 
@@ -45,7 +46,6 @@ def process_template_tables(spark, blob_client: BlobClient, ingestion_config, ta
 
     source_tables = []
 
-    template_id = dmdapi.get_template_metadata(template).get("id")
     template_schema = dmdapi.get_template_schema_by_id(template_id)
 
     if not isinstance(template_schema, list):
@@ -98,11 +98,18 @@ def run_standardization_pipeline(spark, blob_client: BlobClient, ingestion_confi
         quarantine_records = []
 
         try:
-            source_tables = process_template_tables(spark, blob_client, ingestion_config, table_mapping, dmdapi, template, run_id, characteristics_mapping)
+            template_metadata = dmdapi.get_template_metadata(template)
+
+            source_tables = process_template_tables(spark, blob_client, ingestion_config, table_mapping, dmdapi, template, run_id, characteristics_mapping, template_metadata.get("id"))
 
             unified_df = unify_tables(spark, source_tables)
             df_with_name = fill_name(unified_df)
-            df_anonymized = anonymize_dataframe(df_with_name, ingestion_config)
+            df_geom_casted = cast_geometry(
+                df_with_name,
+                template_metadata.get("geometryType"),
+                ingestion_config.data_quality.geometry_column,
+            )
+            df_anonymized = anonymize_dataframe(df_geom_casted, ingestion_config)
             valid_df, rejected_validation_df = validate_dataframe(df_anonymized, ingestion_config)
 
             if not rejected_validation_df.isEmpty():
