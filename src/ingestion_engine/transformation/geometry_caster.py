@@ -1,34 +1,75 @@
 from pyspark.sql import DataFrame
 from pyspark.sql import functions as F
 
-_SINGLE_GEOMETRY_TYPES = {"Point", "LineString", "Polygon"}
+
+_SINGLE_TO_MULTI = {
+    "POINT": "MULTIPOINT",
+    "LINESTRING": "MULTILINESTRING",
+    "POLYGON": "MULTIPOLYGON",
+}
+
+_MULTI_TO_SINGLE = {
+    multi: single
+    for single, multi in _SINGLE_TO_MULTI.items()
+}
+
+
+def _normalize_geometry_type(geometry_type: str) -> str:
+    """
+    Normalize a geometry type for comparison.
+
+    Examples:
+        Point -> POINT
+        ST_LineString -> LINESTRING
+        MultiPolygon -> MULTIPOLYGON
+    """
+    return geometry_type.upper().removeprefix("ST_")
 
 
 def cast_geometry(df: DataFrame, expected_type: str, geometry_column: str = "geometry") -> DataFrame:
     """
-    Attempt to cast a single-part geometry column to its multi-part equivalent
-    (e.g. LineString to MultiLineString) when it matches the expected type.
+    Cast single-part geometries to their multi-part equivalent when required
+    by the expected geometry type.
+
+    Supported conversions:
+        Point      -> MultiPoint
+        LineString -> MultiLineString
+        Polygon    -> MultiPolygon
+
+    Geometries that already have the expected type, are null, or cannot be
+    safely converted are left unchanged.
 
     Args:
         df: Spark DataFrame containing the geometry column.
-        expected_type: Geometry type expected by the DMD template.
-        geometry_column: Name of the geometry column to cast.
+        expected_type: Geometry type expected by the target template.
+        geometry_column: Name of the geometry column.
 
     Returns:
-        The DataFrame with the geometry column cast to the expected multi-part
-        type when applicable, or unchanged otherwise.
+        DataFrame with compatible single-part geometries converted to
+        multi-part geometries.
     """
-
     if geometry_column not in df.columns or not expected_type:
         return df
 
-    current_type = F.regexp_replace(F.expr(f"ST_GeometryType(`{geometry_column}`)"), "^ST_", "")
+    expected_type = _normalize_geometry_type(expected_type)
 
-    should_cast = current_type.isin(*_SINGLE_GEOMETRY_TYPES) & (
-        F.concat(F.lit("Multi"), current_type) == F.lit(expected_type)
+    source_type = _MULTI_TO_SINGLE.get(expected_type)
+
+    if source_type is None:
+        return df
+
+    current_type = F.upper(
+        F.regexp_replace(
+            F.expr(f"ST_GeometryType(`{geometry_column}`)"),
+            "^ST_",
+            "",
+        )
     )
 
     return df.withColumn(
         geometry_column,
-        F.when(should_cast, F.expr(f"ST_Multi(`{geometry_column}`)")).otherwise(F.col(geometry_column)),
+        F.when(
+            current_type == source_type,
+            F.expr(f"ST_Multi(`{geometry_column}`)"),
+        ).otherwise(F.col(geometry_column)),
     )
