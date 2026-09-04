@@ -2,11 +2,9 @@ import os
 
 from pyspark.sql import SparkSession, DataFrame
 from pyspark.sql import functions as F
-from pyspark.sql.types import BinaryType, StringType
 import pyspark.sql.types as T
-from sedona.sql import st_constructors
 
-from ingestion_engine.configuration.models import IngestionConfig
+
 from ingestion_engine.extraction.postgres_source import PostgresSource
 
 

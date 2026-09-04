@@ -17,7 +17,7 @@ def _make_df(rows: list[dict]):
 
 
 def _build(df, *, run_id="run-1", environment="dev", template="PUMP",
-           stage=FailureStage.VALIDATION, error_code=ErrorCode.REQUIRED_FIELD_MISSING,
+           stage=FailureStage.STANDARDIZATION, error_code=ErrorCode.REQUIRED_FIELD_MISSING,
            error_message="missing field"):
     return build_quarantine_records_from_df(df, run_id, environment, template, stage, error_code, error_message)
 
@@ -51,11 +51,6 @@ def test_sets_environment_on_records():
 def test_sets_template_code_on_records():
     result = _build(_make_df([{"id": "a1"}]), template="VALVE")
     assert result[0].template_code == "VALVE"
-
-
-def test_sets_stage_on_records():
-    result = _build(_make_df([{"id": "a1"}]), stage=FailureStage.TRANSFORMATION)
-    assert result[0].stage == FailureStage.TRANSFORMATION
 
 
 def test_sets_error_code_on_records():

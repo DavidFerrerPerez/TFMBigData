@@ -59,6 +59,8 @@ If the GHCR image is private, create an Airflow connection with:
 - Login: GitHub username
 - Password: classic GitHub PAT with `read:packages`
 
+Configure DOCKER_GID variable in `config.env`.
+
 The PAT is stored in Airflow, not in `config.env`. If Airflow has no persistent volume, this connection must be recreated whenever its container is recreated.
 
 ## 2. Execution

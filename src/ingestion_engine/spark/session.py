@@ -19,7 +19,6 @@ def create_spark_session(
                 [
                     "org.postgresql:postgresql:42.7.13",
                     "org.apache.sedona:sedona-spark-3.5_2.12:1.7.1",
-                    "org.datasyslab:geotools-wrapper:1.7.1-28.5",
                     "org.apache.hadoop:hadoop-azure:3.4.0",
                 ]
             ),
@@ -29,14 +28,11 @@ def create_spark_session(
             f"{account_name}.blob.core.windows.net",
             account_key,
         )
-        # Parquet write configuration
         .config("spark.sql.parquet.int96RebaseModeInWrite", "CORRECTED")
         
-        # ===== Hadoop configuration =====
         .config("spark.hadoop.mapreduce.fileoutputcommitter.algorithm.version", "2")
         .config("spark.hadoop.mapreduce.fileoutputcommitter.cleanup-failures.ignored", "true")
         
-        # Azure Blob Storage optimization
         .config("spark.hadoop.fs.azure.rename.optimization", "false")
         .config("spark.hadoop.fs.azure.thread.pool.size", "32")
         .config("spark.hadoop.fs.azure.timeout", "90000")
@@ -44,13 +40,11 @@ def create_spark_session(
         .config("spark.hadoop.fs.azure.fast.upload", "true")
         .config("spark.hadoop.fs.azure.fast.upload.block.size", "268435456")
         
-        # Suppress Azure file system warnings
         .config("spark.driver.extraJavaOptions", "-Dlog4j.logger.org.apache.hadoop.fs.azure=WARN")
         
         .getOrCreate()
     )
 
-    # Suppress Hadoop Azure logger at Python level
     logging.getLogger("py4j.java_gateway").setLevel(logging.WARNING)
     
     return SedonaContext.create(config)
