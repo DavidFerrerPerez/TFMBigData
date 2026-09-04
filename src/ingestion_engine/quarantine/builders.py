@@ -1,5 +1,3 @@
-import json
-
 from ingestion_engine.quarantine.error_codes import ErrorCode, FailureStage
 from ingestion_engine.quarantine.models import QuarantineRecord
 

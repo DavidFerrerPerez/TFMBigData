@@ -33,7 +33,6 @@ def build_asset(asset_data, characteristics: list[dict], template_data: dict, in
         "isEnabled": not bool(template_data["is_deleted"]),
         "isDeleted": bool(template_data["is_deleted"]),
         "geometry": build_geometry(template_data, asset_data, ingestion_config.data_quality.geometry_column),
-        "origin": 1,
         "externalObjects": [
             {
                 "externalId": asset_data["id"],
@@ -41,7 +40,6 @@ def build_asset(asset_data, characteristics: list[dict], template_data: dict, in
             }
         ],
         "mainHierarchyParent": ingestion_config.dmd.main_hierarchy_parent,
-        "bimFileUrl": "bim_file_url",
         "codeReference": code_reference,
     }
 

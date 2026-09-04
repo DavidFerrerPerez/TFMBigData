@@ -6,7 +6,7 @@ from ingestion_engine.quarantine.quarantine_service import QuarantineService
 
 
 def _make_record(run_id="run-1", environment="dev", template_code="PUMP",
-                 stage=FailureStage.VALIDATION, error_code=ErrorCode.REQUIRED_FIELD_MISSING, **kwargs):
+                 stage=FailureStage.STANDARDIZATION, error_code=ErrorCode.REQUIRED_FIELD_MISSING, **kwargs):
     return QuarantineRecord(
         run_id=run_id,
         environment=environment,
@@ -71,7 +71,7 @@ def test_write_groups_same_prefix_into_one_file():
 def test_write_creates_separate_files_for_different_stages():
     service, blob_client = _make_service()
     records = [
-        _make_record(stage=FailureStage.VALIDATION),
+        _make_record(stage=FailureStage.STANDARDIZATION),
         _make_record(stage=FailureStage.UPLOAD),
     ]
     service.write(records)
@@ -101,9 +101,9 @@ def test_write_creates_separate_files_for_different_environments():
 # _to_dict — enum values become plain strings
 
 def test_to_dict_converts_stage_to_string():
-    record = _make_record(stage=FailureStage.VALIDATION)
+    record = _make_record(stage=FailureStage.STANDARDIZATION)
     data = QuarantineService._to_dict(record)
-    assert data["stage"] == "validation"
+    assert data["stage"] == "standardization"
 
 
 def test_to_dict_converts_error_code_to_string():

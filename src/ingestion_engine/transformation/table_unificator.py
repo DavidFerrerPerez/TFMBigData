@@ -1,6 +1,6 @@
 from pyspark.sql import SparkSession, DataFrame
 
-def unify_tables(spark: SparkSession, source_tables: list[DataFrame]) -> DataFrame:
+def unify_tables(source_tables: list[DataFrame]) -> DataFrame:
     """
     Unifies multiple tables into a single table.
 
