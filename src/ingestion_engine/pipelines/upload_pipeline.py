@@ -40,14 +40,7 @@ def upload_asset_batch(asset_list: list[dict], template: str, dmd_api: DMDApi, q
         return
 
     if 400 <= response.status_code < 500:
-        if "Duplicate Name Exception" in response.text:
-            logging.info(f"Skipped quarantine for duplicate name exception on template '{template}'.")
-            counts.add_written(batch_size)
-            asset_list.clear()
-            return
-
         records = build_upload_quarantine_records(asset_list, template, run_id, environment, response)
-
         quarantine_service.write(records)
         counts.add_quarantined(len(records))
 

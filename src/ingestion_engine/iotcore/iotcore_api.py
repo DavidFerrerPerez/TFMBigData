@@ -30,6 +30,20 @@ class IOTCoreAPI:
         """
         return requests.get(url, verify=True, headers=headers, params=params, timeout=self.REQUEST_TIMEOUT)
 
+    def _catalogue_tags(self):
+        """
+        Fetches the catalogue tags from the IOTCore API.
+
+        Returns:
+            list: A list of catalogue tags retrieved from the IOTCore API.
+        """
+        if self._tags is None:
+            response = self.get_response(f'{self.iotcore_api_url}/api/v1/catalogue/tags', headers=self.headers, params={"Driver": self.driver})
+            response.raise_for_status()
+            self._tags = response.json()
+
+        return self._tags
+
     
     def _catalogue_tags_by_name(self) -> dict[str, list[str]]:
         if self._tags_by_name is None:

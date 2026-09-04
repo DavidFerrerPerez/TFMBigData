@@ -104,7 +104,7 @@ def run_standardization_pipeline(spark, blob_client: BlobClient, ingestion_confi
 
             source_tables = process_template_tables(spark, blob_client, ingestion_config, table_mapping, dmdapi, template, run_id, characteristics_mapping, template_metadata.get("id"))
 
-            unified_df = unify_tables(spark, source_tables)
+            unified_df = unify_tables(source_tables)
             df_with_name = fill_name(unified_df)
             df_geom_casted = cast_geometry(
                 df_with_name,
