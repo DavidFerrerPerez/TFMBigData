@@ -125,7 +125,7 @@ def run_standardization_pipeline(spark, blob_client: BlobClient, ingestion_confi
                         run_id=run_id,
                         environment=environment,
                         template=template,
-                        stage=FailureStage.VALIDATION,
+                        stage=FailureStage.STANDARDIZATION,
                         error_code=ErrorCode.INVALID_TYPE,
                         error_message="Asset failed final validation.",
                     )

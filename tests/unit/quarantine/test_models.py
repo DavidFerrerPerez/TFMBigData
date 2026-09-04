@@ -9,7 +9,7 @@ def _make_record(**kwargs):
         "run_id": "run-001",
         "environment": "dev",
         "template_code": "PUMP",
-        "stage": FailureStage.VALIDATION,
+        "stage": FailureStage.STANDARDIZATION,
         "error_code": ErrorCode.REQUIRED_FIELD_MISSING,
         "error_message": "Field 'id' is missing",
         "asset": {"id": "asset-1"},

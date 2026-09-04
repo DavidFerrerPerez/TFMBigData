@@ -90,9 +90,9 @@ def test_upload_asset_batch_calls_quarantine_on_duplicate_name_exception():
     with patch("ingestion_engine.pipelines.upload_pipeline.logging"):
         upload_asset_batch(assets, "my_template", dmd_api, quarantine_service, "run-1", "dev", counts)
 
-    quarantine_service.write.assert_not_called()
-    assert counts.written == 1
-    assert counts.quarantined == 0
+    quarantine_service.write.assert_called_once()
+    assert counts.written == 0
+    assert counts.quarantined == 1
 
 
 def test_upload_asset_batch_reraises_api_exception():
