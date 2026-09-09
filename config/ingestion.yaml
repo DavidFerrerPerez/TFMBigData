@@ -31,6 +31,7 @@ data_quality:
   geometry_column: geom
 
 anonymization:
+  enabled: true
   text_columns:
       - XV_installation_location
   geometry_columns:

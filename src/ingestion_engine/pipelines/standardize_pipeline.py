@@ -111,7 +111,7 @@ def run_standardization_pipeline(spark, blob_client: BlobClient, ingestion_confi
                 template_metadata.get("geometry_type"),
                 ingestion_config.data_quality.geometry_column,
             )
-            df_anonymized = anonymize_dataframe(df_geom_casted, ingestion_config)
+            df_anonymized = anonymize_dataframe(df_geom_casted, ingestion_config) if ingestion_config.anonymization.enabled else df_geom_casted
             valid_df, rejected_validation_df = validate_dataframe(df_anonymized, ingestion_config)
 
             if not rejected_validation_df.isEmpty():
