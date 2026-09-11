@@ -75,12 +75,12 @@ def transform_with_template_schema(df: DataFrame, core_fields: list[str], templa
     """
     Transform the input DataFrame according to the template schema.
 
-    Missing or null source values receive the configured default.
+    Missing or null source values receive the configured default when one exists;
+    otherwise they remain NULL.
+
     Non-null source values that cannot be cast are kept as NULL and their
     target fields are recorded in `_invalid_type_fields`.
     """
-    
-
     select_exprs = []
     invalid_type_exprs = []
 
@@ -91,7 +91,7 @@ def transform_with_template_schema(df: DataFrame, core_fields: list[str], templa
         if not char_code:
             raise ValueError(f"Template characteristic without code: {char}")
 
-        map_characteristics = characteristics_mapping.get(char_code, {})
+        map_characteristics = characteristics_mapping.get(char_code)
 
         if not map_characteristics:
             select_exprs.append(F.lit(None).cast(spark_type_from_template(char_type)).alias(char_code))
@@ -100,9 +100,11 @@ def transform_with_template_schema(df: DataFrame, core_fields: list[str], templa
 
         old_col = map_characteristics.get("field")
         default_val = map_characteristics.get("default_value")
+        null_expr = F.lit(None).cast(spark_type_from_template(char_type))
+        default_expr = default_literal(default_val, char_type) if default_val is not None else null_expr
 
         if old_col not in df.columns:
-            select_exprs.append(default_literal(default_val, char_type).alias(char_code))
+            select_exprs.append(default_expr.alias(char_code))
             invalid_type_exprs.append(F.lit(None).cast(T.StringType()))
             continue
 
@@ -111,10 +113,7 @@ def transform_with_template_schema(df: DataFrame, core_fields: list[str], templa
 
         invalid_cast = source_expr.isNotNull() & casted_expr.isNull()
 
-        value_expr = F.when(
-            source_expr.isNull(),
-            default_literal(default_val, char_type),
-        ).otherwise(casted_expr)
+        value_expr = F.when(source_expr.isNull(), default_expr).otherwise(casted_expr)
 
         select_exprs.append(value_expr.alias(char_code))
         invalid_type_exprs.append(F.when(invalid_cast, F.lit(char_code)))

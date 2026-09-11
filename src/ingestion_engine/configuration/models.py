@@ -19,6 +19,7 @@ class StorageConfig(BaseModel):
     paths: BlobPathConfig
 
 class AnonymizationConfig(BaseModel):
+    enabled: bool
     text_columns: list[str]
     geometry_columns: list[str]
 
