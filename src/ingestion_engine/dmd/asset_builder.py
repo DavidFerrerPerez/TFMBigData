@@ -32,11 +32,12 @@ def build_asset(asset_data, characteristics: list[dict], template_data: dict, in
         "name": name,
         "isEnabled": not bool(template_data["is_deleted"]),
         "isDeleted": bool(template_data["is_deleted"]),
+        "originId": ingestion_config.dmd.origin_id,
         "geometry": build_geometry(template_data, asset_data, ingestion_config.data_quality.geometry_column),
         "externalObjects": [
             {
                 "externalId": asset_data["id"],
-                "consumerapplicationId": 1,
+                "consumerapplicationId": ingestion_config.dmd.consumer_application_id,
             }
         ],
         "mainHierarchyParent": ingestion_config.dmd.main_hierarchy_parent,

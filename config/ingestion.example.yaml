@@ -1,14 +1,14 @@
 available_environments:
   - <ENVIRONMENT_1>
   - <ENVIRONMENT_2>
-  - <ENVIRONMENT_3>
-  - <ENVIRONMENT_4>
 
 source:
   db_schema: <SOURCE_DB_SCHEMA>
 
 templates:
   - <TEMPLATE_NAME>
+  - <TEMPLATE_NAME_2>
+  - <TEMPLATE_NAME_3>
 
 storage:
   container: <STORAGE_CONTAINER>
@@ -30,14 +30,15 @@ data_quality:
   geometry_column: <GEOMETRY_COLUMN>
 
 anonymization:
+  enabled: <ANONYMIZATION_ENABLED>
   text_columns:
       - <TEXT_COLUMN_1>
   geometry_columns:
     - <GEOMETRY_COLUMN_1>
 
 dmd:
-  asset_name_prefix: "<ASSET_NAME_PREFIX>"
-  code_reference_prefix: "<CODE_REFERENCE_PREFIX>"
+  asset_name_prefix: <ASSET_NAME_PREFIX>
+  code_reference_prefix: <CODE_REFERENCE_PREFIX>
   origin_id: <ORIGIN_ID>
   consumer_application_id: <CONSUMER_APPLICATION_ID>
   main_hierarchy_parent: <MAIN_HIERARCHY_PARENT_ID>

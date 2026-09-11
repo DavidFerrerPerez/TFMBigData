@@ -90,9 +90,10 @@ def run_standardization_pipeline(spark, blob_client: BlobClient, ingestion_confi
     """
 
     failures = []
+    pipeline_counts = TemplateCounts()
 
     with open("config/mappings/characteristics_mapping.json", "r", encoding="utf-8") as f:
-            characteristics_mapping = json.load(f)
+        characteristics_mapping = json.load(f)
 
     for template in ingestion_config.templates:
         logging.info(f"Standardizing template '{template}'.")
@@ -141,21 +142,32 @@ def run_standardization_pipeline(spark, blob_client: BlobClient, ingestion_confi
                 f"{ingestion_config.storage.paths.standard}/run_id={run_id_path}/{template}.parquet",
             )
 
-            if counts.exceeds_threshold(ingestion_config.quality_threshold.max_quarantine_ratio):
-                raise QuarantineThresholdExceededError(
-                    template, counts.quarantined, counts.total, ingestion_config.quality_threshold.max_quarantine_ratio
-                )
+            quarantine_rate = counts.quarantined / counts.total if counts.total else 0.0
 
             logging.info(
-                f"Template '{template}' standardized successfully "
-                f"({counts.written} written, {counts.quarantined} quarantined)."
+                f"Template '{template}' standardization summary: "
+                f"{counts.total} processed, "
+                f"{counts.written} written, "
+                f"{counts.quarantined} quarantined "
+                f"({quarantine_rate:.2%} quarantine rate)."
             )
+
+            if counts.exceeds_threshold(ingestion_config.quality_threshold.max_quarantine_ratio):
+                raise QuarantineThresholdExceededError(
+                    template,
+                    counts.quarantined,
+                    counts.total,
+                    ingestion_config.quality_threshold.max_quarantine_ratio,
+                )
 
         except Exception as e:
             logging.exception(f"Standardization failed for template '{template}'.")
             failures.append(f"template={template}: {e}")
 
         finally:
+            pipeline_counts.add_written(counts.written)
+            pipeline_counts.add_quarantined(counts.quarantined)
+
             if quarantine_records:
                 try:
                     quarantine_service.write(quarantine_records)
@@ -163,6 +175,16 @@ def run_standardization_pipeline(spark, blob_client: BlobClient, ingestion_confi
                 except Exception as e:
                     logging.exception(f"Could not persist quarantine records for template '{template}'.")
                     failures.append(f"template={template}, quarantine: {e}")
+
+    success_rate = pipeline_counts.written / pipeline_counts.total if pipeline_counts.total else 0.0
+
+    logging.info(
+        f"Standardization pipeline summary: "
+        f"{pipeline_counts.total} processed, "
+        f"{pipeline_counts.written} written, "
+        f"{pipeline_counts.quarantined} quarantined "
+        f"({success_rate:.2%} success rate)."
+    )
 
     if failures:
         raise PipelineExecutionError("standardization", failures)
