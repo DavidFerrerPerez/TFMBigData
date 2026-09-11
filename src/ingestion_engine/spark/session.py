@@ -18,7 +18,7 @@ def create_spark_session(
             ",".join(
                 [
                     "org.postgresql:postgresql:42.7.13",
-                    "org.apache.sedona:sedona-spark-3.5_2.12:1.7.1",
+                    "org.apache.sedona:sedona-spark-3.5_2.12:1.7.2",
                     "org.apache.hadoop:hadoop-azure:3.4.0",
                 ]
             ),

@@ -54,7 +54,7 @@ def upload_asset_batch(asset_list: list[dict], template: str, dmd_api: DMDApi, q
     )
 
 
-def upload_template(spark: SedonaContext, blob_client: BlobClient, template: str, ingestion_config, dmd_api: DMDApi, iotcore_api: IOTCoreAPI, quarantine_service: QuarantineService, run_id: str, environment: str) -> None:
+def upload_template(spark: SedonaContext, blob_client: BlobClient, template: str, ingestion_config, dmd_api: DMDApi, iotcore_api: IOTCoreAPI, quarantine_service: QuarantineService, run_id: str, environment: str, counts: TemplateCounts) -> None:
     """
     Read, prepare and upload all assets associated with a DMD template.
 
@@ -66,7 +66,7 @@ def upload_template(spark: SedonaContext, blob_client: BlobClient, template: str
         dmd_api (DMDApi): The DMD API client.
         iotcore_api (IOTCoreAPI): The IoT Core API client.
     """
-    logging.info(f"Uploading template {template}...")
+    logging.info(f"Uploading template '{template}'.")
 
     try:
         run_id_path = run_id_to_path(run_id)
@@ -87,7 +87,6 @@ def upload_template(spark: SedonaContext, blob_client: BlobClient, template: str
 
     asset_list = []
     quarantine_records = []
-    counts = TemplateCounts()
 
     for row in df_assets.toLocalIterator():
         try:
@@ -132,15 +131,20 @@ def upload_template(spark: SedonaContext, blob_client: BlobClient, template: str
     if quarantine_records:
         quarantine_service.write(quarantine_records)
 
+    success_rate = counts.written / counts.total if counts.total else 0.0
+
+    logging.info(
+        f"Template '{template}' upload summary: "
+        f"{counts.total} processed, "
+        f"{counts.written} uploaded, "
+        f"{counts.quarantined} quarantined "
+        f"({success_rate:.2%} success rate)."
+    )
+
     if counts.exceeds_threshold(ingestion_config.quality_threshold.max_quarantine_ratio):
         raise QuarantineThresholdExceededError(
             template, counts.quarantined, counts.total, ingestion_config.quality_threshold.max_quarantine_ratio
         )
-
-    logging.info(
-        f"Template {template} uploaded successfully "
-        f"({counts.written} written, {counts.quarantined} quarantined)."
-    )
 
 
 def run_upload_pipeline(spark: SedonaContext, blob_client: BlobClient, ingestion_config, dmd_api: DMDApi, iotcore_api: IOTCoreAPI, quarantine_service: QuarantineService, run_id: str, environment: str) -> None:
@@ -148,13 +152,40 @@ def run_upload_pipeline(spark: SedonaContext, blob_client: BlobClient, ingestion
     Execute the upload pipeline for every configured template.
     """
     failures = []
+    pipeline_counts = TemplateCounts()
 
     for template in ingestion_config.templates:
+
+        counts = TemplateCounts()
         try:
-            upload_template(spark, blob_client, template, ingestion_config, dmd_api, iotcore_api, quarantine_service, run_id, environment)
+            upload_template(spark, blob_client, template, ingestion_config, dmd_api, iotcore_api, quarantine_service, run_id, environment, counts)
+
+            success_rate = counts.written / counts.total if counts.total else 0.0
+
+            logging.info(
+                f"Template '{template}' upload summary: "
+                f"{counts.total} processed, "
+                f"{counts.written} uploaded, "
+                f"{counts.quarantined} quarantined "
+                f"({success_rate:.2%} success rate)."
+            )
         except Exception as e:
             logging.exception(f"Upload failed for template '{template}': {e}")
             failures.append(f"template={template}: {e}")
+
+        finally:
+            pipeline_counts.add_written(counts.written)
+            pipeline_counts.add_quarantined(counts.quarantined)
+
+    success_rate = pipeline_counts.written / pipeline_counts.total if pipeline_counts.total else 0.0
+
+    logging.info(
+        f"Upload pipeline summary: "
+        f"{pipeline_counts.total} processed, "
+        f"{pipeline_counts.written} uploaded, "
+        f"{pipeline_counts.quarantined} quarantined "
+        f"({success_rate:.2%} success rate)."
+    )
 
     if failures:
         raise PipelineExecutionError("upload", failures)
