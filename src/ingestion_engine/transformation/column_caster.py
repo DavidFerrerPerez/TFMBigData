@@ -15,6 +15,7 @@ def spark_type_from_template(type_name: str):
         "double": T.DoubleType(),
         "integer": T.IntegerType(),
         "boolean": T.BooleanType(),
+        "iotsynoptic": T.StringType(),
     }
 
     normalized = (type_name or "").lower()
