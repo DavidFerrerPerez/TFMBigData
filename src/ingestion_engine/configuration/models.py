@@ -30,6 +30,8 @@ class DMDConfig(BaseModel):
     consumer_application_id: int
     main_hierarchy_parent: int
     batch_size: int
+    connect_timeout_seconds: int = 5
+    read_timeout_seconds: int = 120
 
 class QualityThresholdConfig(BaseModel):
     max_quarantine_ratio: float

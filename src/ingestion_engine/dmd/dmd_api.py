@@ -1,5 +1,6 @@
 import requests
 import json
+from requests.adapters import HTTPAdapter
 
 class DMDApi:
 
@@ -16,6 +17,10 @@ class DMDApi:
         self._templates = None
         self._maindata = None
         self._maindata_by_code = None
+        self._session = requests.Session()
+        adapter = HTTPAdapter(pool_connections=20, pool_maxsize=20)
+        self._session.mount("http://", adapter)
+        self._session.mount("https://", adapter)
 
     def get_response(self, url, headers, params=None):
         """
@@ -29,7 +34,7 @@ class DMDApi:
         Returns:
             requests.Response: The response object from the GET request.
         """
-        return requests.get(url, verify=True, headers=headers, params=params, timeout=self.REQUEST_TIMEOUT)
+        return self._session.get(url, verify=True, headers=headers, params=params, timeout=self.REQUEST_TIMEOUT)
 
 
     def post_response(self, url, body, headers, params=None):
@@ -45,7 +50,7 @@ class DMDApi:
         Returns:
             requests.Response: The response object from the POST request.
         """
-        return requests.post(url, verify=True, params=params, headers=headers, data=body, timeout=self.REQUEST_TIMEOUT)
+        return self._session.post(url, verify=True, params=params, headers=headers, data=body, timeout=self.REQUEST_TIMEOUT)
 
 
     def _get_templates(self):

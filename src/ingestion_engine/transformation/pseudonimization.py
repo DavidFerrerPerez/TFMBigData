@@ -4,15 +4,18 @@ from pyspark.sql import DataFrame
 from pyspark.sql import functions as F
 
 
-def anonymize_text_column(df: DataFrame, column_name: str, prefix: str = "ANON") -> DataFrame:
+def pseudonimize_text_column(df: DataFrame, column_name: str, prefix: str = "ANON") -> DataFrame:
     """
-    Anonymizes a text column using a deterministic salted hash.
+    Pseudonimizes a text column using a deterministic salted hash.
 
     The same original value will always generate the same anonymized value
     when using the same salt.
 
     Null and empty values are preserved.
     """
+
+    if column_name not in df.columns:
+        return df
 
     original = F.col(column_name)
 
@@ -43,12 +46,15 @@ def anonymize_text_column(df: DataFrame, column_name: str, prefix: str = "ANON")
     )
 
 
-def anonymize_geometry(df: DataFrame, geometry_column: str) -> DataFrame:
+def pseudonimize_geometry(df: DataFrame, geometry_column: str) -> DataFrame:
     """
     Moves all geometries by the same X/Y offset.
 
     This preserves geometry type, shape and relative spatial relationships.
     """
+
+    if geometry_column not in df.columns:
+        return df
 
     return df.withColumn(
         geometry_column,
@@ -64,22 +70,22 @@ def anonymize_geometry(df: DataFrame, geometry_column: str) -> DataFrame:
     )
 
 
-def anonymize_dataframe(df: DataFrame, ingestion_config) -> DataFrame:
+def pseudonimize_dataframe(df: DataFrame, ingestion_config) -> DataFrame:
     """
-    Anonymizes the specified text and geometry columns in the DataFrame.
+    Pseudonimizes the specified text and geometry columns in the DataFrame.
 
     Args:
-        df (DataFrame): The input DataFrame to be anonymized.
+        df (DataFrame): The input DataFrame to be pseudonimized.
         ingestion_config: The ingestion configuration containing anonymization settings.
 
     Returns:
-        DataFrame: The anonymized DataFrame.
+        DataFrame: The pseudonimized DataFrame.
     """
 
     for column in ingestion_config.anonymization.text_columns:
-        df = anonymize_text_column(df, column)
+        df = pseudonimize_text_column(df, column)
 
     for column in ingestion_config.anonymization.geometry_columns:
-        df = anonymize_geometry(df, column)
+        df = pseudonimize_geometry(df, column)
 
     return df
