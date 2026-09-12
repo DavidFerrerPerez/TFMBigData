@@ -22,7 +22,7 @@ def pseudonimize_text_column(df: DataFrame, column_name: str, prefix: str = "ANO
     hashed_value = F.substring(
         F.sha2(
             F.concat(
-                F.lit(os.environ.get("ANONYMIZATION_SALT", "")),
+                F.lit(os.environ.get("PSEUDONIMIZATION_SALT", "")),
                 F.lit("|"),
                 F.lower(F.trim(original)),
             ),
@@ -62,8 +62,8 @@ def pseudonimize_geometry(df: DataFrame, geometry_column: str) -> DataFrame:
             f"""
             ST_Translate(
                 `{geometry_column}`,
-                {os.environ.get("ANONYMIZATION_OFFSET_X", 1)},
-                {os.environ.get("ANONYMIZATION_OFFSET_Y", 1)}
+                {os.environ.get("PSEUDONIMIZATION_OFFSET_X", 1)},
+                {os.environ.get("PSEUDONIMIZATION_OFFSET_Y", 1)}
             )
             """
         ),
@@ -76,16 +76,16 @@ def pseudonimize_dataframe(df: DataFrame, ingestion_config) -> DataFrame:
 
     Args:
         df (DataFrame): The input DataFrame to be pseudonimized.
-        ingestion_config: The ingestion configuration containing anonymization settings.
+        ingestion_config: The ingestion configuration containing pseudonimization settings.
 
     Returns:
         DataFrame: The pseudonimized DataFrame.
     """
 
-    for column in ingestion_config.anonymization.text_columns:
+    for column in ingestion_config.pseudonimization.text_columns:
         df = pseudonimize_text_column(df, column)
 
-    for column in ingestion_config.anonymization.geometry_columns:
+    for column in ingestion_config.pseudonimization.geometry_columns:
         df = pseudonimize_geometry(df, column)
 
     return df

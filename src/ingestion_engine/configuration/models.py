@@ -42,7 +42,7 @@ class IngestionConfig(BaseModel):
     templates: list[str]
     storage: StorageConfig
     data_quality: DataQualityConfig
-    anonymization: AnonymizationConfig
+    pseudonimization: AnonymizationConfig
     dmd: DMDConfig
     quality_threshold: QualityThresholdConfig
 

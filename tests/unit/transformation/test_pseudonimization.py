@@ -11,7 +11,7 @@ from ingestion_engine.transformation.pseudonimization import (
 @pytest.fixture(autouse=True)
 def mock_F():
     """Patch pyspark.sql.functions in anonymization; avoids needing a live JVM."""
-    with patch("ingestion_engine.transformation.anonymization.F") as mock_f:
+    with patch("ingestion_engine.transformation.pseudonimization.F") as mock_f:
         mock_f.when.return_value.otherwise.return_value = MagicMock()
         yield mock_f
 
@@ -20,20 +20,24 @@ def mock_F():
 
 def test_pseudonimize_text_column_calls_withColumn_with_correct_name():
     df = MagicMock()
-    pseudonimize_text_column(df, "customer_name")
+    df.columns = ["address"]
+    pseudonimize_text_column(df, "address")
     df.withColumn.assert_called_once()
-    assert df.withColumn.call_args[0][0] == "customer_name"
+    assert df.withColumn.call_args[0][0] == "address"
 
 
 def test_pseudonimize_text_column_returns_result_of_withColumn():
     df = MagicMock()
+    df.columns = ["address"]
     expected = MagicMock()
+    expected.columns = ["address"]
     df.withColumn.return_value = expected
-    assert pseudonimize_text_column(df, "customer_name") is expected
+    assert pseudonimize_text_column(df, "address") is expected
 
 
 def test_pseudonimize_text_column_preserves_column_name():
     df = MagicMock()
+    df.columns = ["address"]
     pseudonimize_text_column(df, "address")
     assert df.withColumn.call_args[0][0] == "address"
 
@@ -42,6 +46,7 @@ def test_pseudonimize_text_column_preserves_column_name():
 
 def test_pseudonimize_geometry_calls_withColumn_with_geometry_column():
     df = MagicMock()
+    df.columns = ["geometry"]
     pseudonimize_geometry(df, "geometry")
     df.withColumn.assert_called_once()
     assert df.withColumn.call_args[0][0] == "geometry"
@@ -49,7 +54,9 @@ def test_pseudonimize_geometry_calls_withColumn_with_geometry_column():
 
 def test_pseudonimize_geometry_returns_result_of_withColumn():
     df = MagicMock()
+    df.columns = ["geometry"]
     expected = MagicMock()
+    expected.columns = ["geometry"]
     df.withColumn.return_value = expected
     assert pseudonimize_geometry(df, "geometry") is expected
 
@@ -58,10 +65,11 @@ def test_pseudonimize_geometry_returns_result_of_withColumn():
 
 def test_pseudonimize_dataframe_applies_text_columns():
     config = MagicMock()
-    config.anonymization.text_columns = ["customer_name", "address"]
-    config.anonymization.geometry_columns = []
+    config.pseudonimization.text_columns = ["address1", "address2"]
+    config.pseudonimization.geometry_columns = []
 
     df = MagicMock()
+    df.columns = ["address1", "address2"]
     df.withColumn.return_value = df
 
     pseudonimize_dataframe(df, config)
@@ -70,10 +78,11 @@ def test_pseudonimize_dataframe_applies_text_columns():
 
 def test_pseudonimize_dataframe_applies_geometry_columns():
     config = MagicMock()
-    config.anonymization.text_columns = []
-    config.anonymization.geometry_columns = ["geometry"]
+    config.pseudonimization.text_columns = []
+    config.pseudonimization.geometry_columns = ["geometry"]
 
     df = MagicMock()
+    df.columns = ["geometry"]
     df.withColumn.return_value = df
 
     pseudonimize_dataframe(df, config)
@@ -82,10 +91,11 @@ def test_pseudonimize_dataframe_applies_geometry_columns():
 
 def test_pseudonimize_dataframe_applies_both_text_and_geometry():
     config = MagicMock()
-    config.anonymization.text_columns = ["customer_name", "address"]
-    config.anonymization.geometry_columns = ["geometry"]
+    config.pseudonimization.text_columns = ["address1", "address2"]
+    config.pseudonimization.geometry_columns = ["geometry"]
 
     df = MagicMock()
+    df.columns = ["address1", "address2", "geometry"]
     df.withColumn.return_value = df
 
     pseudonimize_dataframe(df, config)
@@ -94,8 +104,8 @@ def test_pseudonimize_dataframe_applies_both_text_and_geometry():
 
 def test_pseudonimize_dataframe_empty_config_returns_df_unchanged():
     config = MagicMock()
-    config.anonymization.text_columns = []
-    config.anonymization.geometry_columns = []
+    config.pseudonimization.text_columns = []
+    config.pseudonimization.geometry_columns = []
 
     df = MagicMock()
     result = pseudonimize_dataframe(df, config)
