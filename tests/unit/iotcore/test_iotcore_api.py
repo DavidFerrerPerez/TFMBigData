@@ -37,18 +37,20 @@ def test_iotcore_api_init_sets_empty_caches():
 
 # get_response tests
 
-@patch("ingestion_engine.iotcore.iotcore_api.requests.get")
-def test_get_response_makes_http_get_request(mock_requests_get):
+@patch("ingestion_engine.iotcore.iotcore_api.requests.Session")
+def test_get_response_makes_http_get_request(mock_session_cls):
     """Test that get_response makes an HTTP GET request."""
     mock_response = MagicMock()
-    mock_requests_get.return_value = mock_response
+    mock_session = MagicMock()
+    mock_session.get.return_value = mock_response
+    mock_session_cls.return_value = mock_session
     
     api = IOTCoreAPI("http://api.example.com", token="token")
     headers = {"Authorization": "Bearer token"}
     
     result = api.get_response("http://api.example.com/tags", headers)
     
-    mock_requests_get.assert_called_once_with(
+    mock_session.get.assert_called_once_with(
         "http://api.example.com/tags",
         verify=True,
         headers=headers,
@@ -58,11 +60,13 @@ def test_get_response_makes_http_get_request(mock_requests_get):
     assert result == mock_response
 
 
-@patch("ingestion_engine.iotcore.iotcore_api.requests.get")
-def test_get_response_with_params(mock_requests_get):
+@patch("ingestion_engine.iotcore.iotcore_api.requests.Session")
+def test_get_response_with_params(mock_session_cls):
     """Test that get_response passes query parameters."""
     mock_response = MagicMock()
-    mock_requests_get.return_value = mock_response
+    mock_session = MagicMock()
+    mock_session.get.return_value = mock_response
+    mock_session_cls.return_value = mock_session
     
     api = IOTCoreAPI("http://api.example.com")
     headers = {"Content-Type": "application/json"}
@@ -70,7 +74,7 @@ def test_get_response_with_params(mock_requests_get):
     
     result = api.get_response("http://api.example.com/tags", headers, params=params)
     
-    mock_requests_get.assert_called_once_with(
+    mock_session.get.assert_called_once_with(
         "http://api.example.com/tags",
         verify=True,
         headers=headers,
@@ -79,17 +83,19 @@ def test_get_response_with_params(mock_requests_get):
     )
 
 
-@patch("ingestion_engine.iotcore.iotcore_api.requests.get")
-def test_get_response_uses_request_timeout(mock_requests_get):
+@patch("ingestion_engine.iotcore.iotcore_api.requests.Session")
+def test_get_response_uses_request_timeout(mock_session_cls):
     """Test that get_response uses the correct timeout."""
     mock_response = MagicMock()
-    mock_requests_get.return_value = mock_response
+    mock_session = MagicMock()
+    mock_session.get.return_value = mock_response
+    mock_session_cls.return_value = mock_session
     
     api = IOTCoreAPI("http://api.example.com")
     
     api.get_response("http://api.example.com/tags", {})
     
-    call_kwargs = mock_requests_get.call_args[1]
+    call_kwargs = mock_session.get.call_args[1]
     assert call_kwargs["timeout"] == (5, 30)
 
 

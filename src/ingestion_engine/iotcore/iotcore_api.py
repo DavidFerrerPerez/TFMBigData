@@ -1,4 +1,5 @@
 import requests
+from requests.adapters import HTTPAdapter
 
 class IOTCoreAPI:
 
@@ -15,6 +16,10 @@ class IOTCoreAPI:
         self.driver = driver
         self._tags = None
         self._tags_by_name = None
+        self._session = requests.Session()
+        adapter = HTTPAdapter(pool_connections=20, pool_maxsize=20)
+        self._session.mount("http://", adapter)
+        self._session.mount("https://", adapter)
 
     def get_response(self, url, headers, params=None):
         """
@@ -28,7 +33,7 @@ class IOTCoreAPI:
         Returns:
             requests.Response: The response object from the GET request.
         """
-        return requests.get(url, verify=True, headers=headers, params=params, timeout=self.REQUEST_TIMEOUT)
+        return self._session.get(url, verify=True, headers=headers, params=params, timeout=self.REQUEST_TIMEOUT)
 
     def _catalogue_tags(self):
         """

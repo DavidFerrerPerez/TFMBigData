@@ -29,7 +29,7 @@ data_quality:
   id_column: <ID_COLUMN>
   geometry_column: <GEOMETRY_COLUMN>
 
-anonymization:
+pseudonimization:
   enabled: <ANONYMIZATION_ENABLED>
   text_columns:
       - <TEXT_COLUMN_1>
