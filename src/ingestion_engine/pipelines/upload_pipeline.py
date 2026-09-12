@@ -36,6 +36,8 @@ def upload_asset_batch(asset_list: list[dict], template: str, dmd_api: DMDApi, q
 
     if response.ok:
         counts.add_written(batch_size)
+        if (counts.written + counts.quarantined) % 1000 == 0:
+            logging.info(f"Uploaded {counts.written + counts.quarantined} assets for template '{template}'.")
         asset_list.clear()
         return
 

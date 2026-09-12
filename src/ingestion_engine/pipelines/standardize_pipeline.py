@@ -9,7 +9,7 @@ from ingestion_engine.dmd.dmd_api import DMDApi
 from ingestion_engine.transformation.column_caster import transform_with_template_schema
 from ingestion_engine.storage.geoparquet_reader import read_geoparquet_to_df
 from ingestion_engine.transformation.name_validator import fill_name
-from ingestion_engine.transformation.anonymization import anonymize_dataframe
+from ingestion_engine.transformation.pseudonimization import pseudonimize_dataframe
 from ingestion_engine.validation.complete_validation import validate_dataframe
 from ingestion_engine.storage.geoparquet_writer import write_df_to_geoparquet
 from ingestion_engine.logging.config import configure_logging
@@ -112,7 +112,7 @@ def run_standardization_pipeline(spark, blob_client: BlobClient, ingestion_confi
                 template_metadata.get("geometry_type"),
                 ingestion_config.data_quality.geometry_column,
             )
-            df_anonymized = anonymize_dataframe(df_geom_casted, ingestion_config) if ingestion_config.anonymization.enabled else df_geom_casted
+            df_anonymized = pseudonimize_dataframe(df_geom_casted, ingestion_config) if ingestion_config.pseudonimization.enabled else df_geom_casted
             valid_df, rejected_validation_df = validate_dataframe(df_anonymized, ingestion_config)
 
             if not rejected_validation_df.isEmpty():

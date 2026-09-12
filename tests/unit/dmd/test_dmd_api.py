@@ -37,18 +37,20 @@ def test_dmd_api_init_sets_empty_caches():
 
 # get_response tests
 
-@patch("ingestion_engine.dmd.dmd_api.requests.get")
-def test_get_response_makes_http_get_request(mock_requests_get):
+@patch("ingestion_engine.dmd.dmd_api.requests.Session")
+def test_get_response_makes_http_get_request(mock_session_cls):
     """Test that get_response makes an HTTP GET request."""
     mock_response = MagicMock()
-    mock_requests_get.return_value = mock_response
+    mock_session = MagicMock()
+    mock_session.get.return_value = mock_response
+    mock_session_cls.return_value = mock_session
     
     api = DMDApi("http://api.example.com", token="token")
     headers = {"Authorization": "Bearer token"}
     
     result = api.get_response("http://api.example.com/template", headers)
     
-    mock_requests_get.assert_called_once_with(
+    mock_session.get.assert_called_once_with(
         "http://api.example.com/template",
         verify=True,
         headers=headers,
@@ -58,11 +60,13 @@ def test_get_response_makes_http_get_request(mock_requests_get):
     assert result == mock_response
 
 
-@patch("ingestion_engine.dmd.dmd_api.requests.get")
-def test_get_response_with_params(mock_requests_get):
+@patch("ingestion_engine.dmd.dmd_api.requests.Session")
+def test_get_response_with_params(mock_session_cls):
     """Test that get_response passes query parameters."""
     mock_response = MagicMock()
-    mock_requests_get.return_value = mock_response
+    mock_session = MagicMock()
+    mock_session.get.return_value = mock_response
+    mock_session_cls.return_value = mock_session
     
     api = DMDApi("http://api.example.com")
     headers = {"Content-Type": "application/json"}
@@ -70,7 +74,7 @@ def test_get_response_with_params(mock_requests_get):
     
     result = api.get_response("http://api.example.com/template", headers, params=params)
     
-    mock_requests_get.assert_called_once_with(
+    mock_session.get.assert_called_once_with(
         "http://api.example.com/template",
         verify=True,
         headers=headers,
@@ -81,11 +85,13 @@ def test_get_response_with_params(mock_requests_get):
 
 # post_response tests
 
-@patch("ingestion_engine.dmd.dmd_api.requests.post")
-def test_post_response_makes_http_post_request(mock_requests_post):
+@patch("ingestion_engine.dmd.dmd_api.requests.Session")
+def test_post_response_makes_http_post_request(mock_session_cls):
     """Test that post_response makes an HTTP POST request."""
     mock_response = MagicMock()
-    mock_requests_post.return_value = mock_response
+    mock_session = MagicMock()
+    mock_session.post.return_value = mock_response
+    mock_session_cls.return_value = mock_session
     
     api = DMDApi("http://api.example.com", token="token")
     headers = {"Authorization": "Bearer token"}
@@ -93,7 +99,7 @@ def test_post_response_makes_http_post_request(mock_requests_post):
     
     result = api.post_response("http://api.example.com/assets", body, headers)
     
-    mock_requests_post.assert_called_once_with(
+    mock_session.post.assert_called_once_with(
         "http://api.example.com/assets",
         verify=True,
         params=None,
@@ -104,11 +110,13 @@ def test_post_response_makes_http_post_request(mock_requests_post):
     assert result == mock_response
 
 
-@patch("ingestion_engine.dmd.dmd_api.requests.post")
-def test_post_response_with_params(mock_requests_post):
+@patch("ingestion_engine.dmd.dmd_api.requests.Session")
+def test_post_response_with_params(mock_session_cls):
     """Test that post_response passes query parameters."""
     mock_response = MagicMock()
-    mock_requests_post.return_value = mock_response
+    mock_session = MagicMock()
+    mock_session.post.return_value = mock_response
+    mock_session_cls.return_value = mock_session
     
     api = DMDApi("http://api.example.com")
     headers = {"Content-Type": "application/json"}
@@ -117,7 +125,7 @@ def test_post_response_with_params(mock_requests_post):
     
     result = api.post_response("http://api.example.com/assets", body, headers, params=params)
     
-    mock_requests_post.assert_called_once_with(
+    mock_session.post.assert_called_once_with(
         "http://api.example.com/assets",
         verify=True,
         params=params,
