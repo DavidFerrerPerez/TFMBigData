@@ -64,7 +64,7 @@ def test_run_extraction_pipeline_skips_template_with_no_tables():
     blob_client = _make_blob_client()
 
     with patch("ingestion_engine.pipelines.extract_pipeline.read_table_from_postgres") as mock_read, \
-         patch("ingestion_engine.pipelines.extract_pipeline.write_df_to_geoparquet") as mock_write:
+         patch("ingestion_engine.pipelines.extract_pipeline.write_df_to_geoparquet"):
         
         mock_df = MagicMock()
         mock_read.return_value = mock_df
@@ -85,7 +85,7 @@ def test_run_extraction_pipeline_continues_on_read_failure():
     blob_client = _make_blob_client()
 
     with patch("ingestion_engine.pipelines.extract_pipeline.read_table_from_postgres") as mock_read, \
-         patch("ingestion_engine.pipelines.extract_pipeline.write_df_to_geoparquet") as mock_write:
+         patch("ingestion_engine.pipelines.extract_pipeline.write_df_to_geoparquet"):
         
         mock_df = MagicMock()
         mock_read.side_effect = [Exception("Connection failed"), mock_df]
@@ -113,7 +113,7 @@ def test_run_extraction_pipeline_continues_on_write_failure():
         mock_read.return_value = mock_df
         mock_write.side_effect = [Exception("Storage error"), None]
 
-        with pytest.raises(PipelineExecutionError) as exc_info:
+        with pytest.raises(PipelineExecutionError):
             run_extraction_pipeline(config, table_mapping, spark, blob_client, "dev", "2024-01-15T10:30:45.123456")
 
         # Should have tried both tables
@@ -176,7 +176,7 @@ def test_run_extraction_pipeline_processes_multiple_templates():
     blob_client = _make_blob_client()
 
     with patch("ingestion_engine.pipelines.extract_pipeline.read_table_from_postgres") as mock_read, \
-         patch("ingestion_engine.pipelines.extract_pipeline.write_df_to_geoparquet") as mock_write:
+         patch("ingestion_engine.pipelines.extract_pipeline.write_df_to_geoparquet"):
         
         mock_df = MagicMock()
         mock_read.return_value = mock_df

@@ -1,5 +1,3 @@
-from pathlib import Path
-
 from azure.storage.blob import BlobServiceClient
 
 

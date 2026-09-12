@@ -52,6 +52,6 @@ def test_validate_null_in_mandatory_field_is_filtered_to_rejected():
 
 def test_validate_invalid_geometry_is_filtered_to_rejected(mock_F):
     df = _make_valid_df()
-    valid, rejected = validate_dataframe(df, _make_config())
+    _, rejected = validate_dataframe(df, _make_config())
     mock_F.expr.assert_called()  # geometry check uses ST_IsValid via F.expr
     assert rejected is not None

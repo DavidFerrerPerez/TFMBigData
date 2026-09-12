@@ -1,5 +1,3 @@
-from pyspark.sql import DataFrame
-from functools import reduce
 import math
 from typing import Any
 

@@ -1,6 +1,5 @@
-import json
 import pytest
-from unittest.mock import MagicMock, patch, mock_open
+from unittest.mock import MagicMock, patch
 from pyspark.sql import types as T
 
 from ingestion_engine.transformation.column_caster import (
@@ -168,3 +167,5 @@ def test_transform_mapped_field_absent_in_df_falls_back_to_null():
     result = transform_with_template_schema(df, ["id", "source"], schema, mapping)
 
     df.select.assert_called_once()
+
+    assert result is df.select.return_value

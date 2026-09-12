@@ -1,6 +1,5 @@
 from unittest.mock import MagicMock
 from datetime import date
-import pytest
 
 from ingestion_engine.dmd.characteristics import (
     create_characteristics_list,
