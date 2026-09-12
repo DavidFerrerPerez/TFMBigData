@@ -42,7 +42,7 @@ data_quality:
   id_column: id
   geometry_column: geom
 
-pseudonimization:
+pseudonymization:
   enabled: true
   text_columns:
       - XV_installation_location
