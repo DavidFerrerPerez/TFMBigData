@@ -30,13 +30,6 @@ def _make_ingestion_config(name_prefix="TFMDFP - ", code_reference_prefix="TFMDF
     return config
 
 
-def _make_geometry(geom_type="Point", coords=None):
-    geometry = MagicMock()
-    geometry.geom_type = geom_type
-    geometry.coords = coords if coords is not None else [(1.0, 2.0)]
-    return geometry
-
-
 # build_asset — name and code reference
 
 def test_build_asset_name_is_prefixed_with_tfmdfp():
@@ -96,7 +89,7 @@ def test_build_asset_sets_main_hierarchy_parent():
 
 # build_geometry
 
-def test_build_geometry_returns_type_and_coordinates_from_template():
+def test_build_geometry_returns_type_and_coordinates():
     geometry = Point(10.0, 20.0)
     asset_data = _make_asset_data(geometry=geometry)
     asset_data.asDict.return_value = {"geometry": geometry}
@@ -106,7 +99,7 @@ def test_build_geometry_returns_type_and_coordinates_from_template():
     assert result == {"type": "Point", "coordinates": (10.0, 20.0)}
 
 
-def test_build_geometry_falls_back_to_asset_geom_type_when_template_has_none():
+def test_build_geometry_preserves_linestring_type():
     geometry = LineString([(0.0, 0.0), (1.0, 1.0)])
     asset_data = _make_asset_data(geometry=geometry)
     asset_data.asDict.return_value = {"geometry": geometry}
