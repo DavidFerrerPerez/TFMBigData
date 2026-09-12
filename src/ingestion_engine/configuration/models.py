@@ -18,7 +18,7 @@ class StorageConfig(BaseModel):
     container: str
     paths: BlobPathConfig
 
-class AnonymizationConfig(BaseModel):
+class PseudonymizationConfig(BaseModel):
     enabled: bool
     text_columns: list[str]
     geometry_columns: list[str]
@@ -40,7 +40,7 @@ class IngestionConfig(BaseModel):
     templates: list[str]
     storage: StorageConfig
     data_quality: DataQualityConfig
-    pseudonymization: AnonymizationConfig
+    pseudonymization: PseudonymizationConfig
     dmd: DMDConfig
     quality_threshold: QualityThresholdConfig
 
