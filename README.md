@@ -35,9 +35,9 @@ IOTCORE_API_TOKEN_DEV=
 IOTCORE_API_DRIVER_DEV=
 
 # Anonymization
-ANONYMIZATION_SALT=
-ANONYMIZATION_OFFSET_X=
-ANONYMIZATION_OFFSET_Y=
+PSEUDONYMIZATION_SALT=
+PSEUDONYMIZATION_OFFSET_X=
+PSEUDONYMIZATION_OFFSET_Y=
 
 # Airflow deployment
 INGESTION_IMAGE=ghcr.io/davidferrerperez/ingestion-engine:latest
@@ -71,13 +71,24 @@ Start Airflow:
 docker compose --env-file config.env up -d --build airflow
 ```
 
-Open [http://localhost:8081](http://localhost:8081), sign in, enable the `client_ingestion` DAG, and trigger a new run. Airflow executes:
+Open [http://localhost:8081](http://localhost:8081), sign in, enable the `ingestion_engine` DAG, and trigger a new run. Airflow executes:
 
 ```text
 validate_configuration -> extract -> standardize -> upload
 ```
 
 Each stage uses the same Airflow run ID and runs in a temporary container created from `INGESTION_IMAGE`. View progress and errors from the task logs in the Airflow interface.
+
+### 2.1 Reprocessing downstream stages
+
+Once extraction has persisted the Raw datasets in Azure Blob Storage, the downstream stages no longer need access to the source PostgreSQL infrastructure. Standardization can be rerun from the existing Raw data, and upload can be rerun from the existing Standard data, as long as the original `run_id` is reused.
+
+```bash
+pdm run ingestion-engine run --stage standardize --environment DEV --run-id "<existing_run_id>"
+pdm run ingestion-engine run --stage upload --environment DEV --run-id "<existing_run_id>"
+```
+
+The same behavior is available for an existing Airflow DAG run by rerunning `standardize` and `upload` without rerunning `extract`. The current `ingestion_engine` DAG is intended for complete ingestion runs; it does not create a separate new Airflow run for reprocessing data from a previous `run_id`.
 
 When changing `INGESTION_IMAGE` or another value in `config.env`, recreate Airflow so it loads the new configuration:
 

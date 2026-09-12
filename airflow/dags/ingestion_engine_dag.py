@@ -25,9 +25,9 @@ REQUIRED_VARIABLES = [
     f"IOTCORE_API_URL_{ENVIRONMENT}",
     f"IOTCORE_API_TOKEN_{ENVIRONMENT}",
     f"IOTCORE_API_DRIVER_{ENVIRONMENT}",
-    "ANONYMIZATION_SALT",
-    "ANONYMIZATION_OFFSET_X",
-    "ANONYMIZATION_OFFSET_Y",
+    "PSEUDONYMIZATION_SALT",
+    "PSEUDONYMIZATION_OFFSET_X",
+    "PSEUDONYMIZATION_OFFSET_Y",
 ]
 
 PRIVATE_ENVIRONMENT = {
@@ -60,7 +60,7 @@ def create_pipeline_task(stage: str) -> DockerOperator:
 
 
 with DAG(
-    dag_id="client_ingestion",
+    dag_id="ingestion_engine",
     start_date=pendulum.datetime(2026, 9, 1, tz="Europe/Madrid"),
     schedule=None,
     catchup=False,

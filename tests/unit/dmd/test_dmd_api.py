@@ -81,7 +81,7 @@ def test_get_response_with_params(mock_session_cls):
         params=params,
         timeout=(5, 30)
     )
-
+    assert result == mock_response
 
 # post_response tests
 
@@ -124,6 +124,8 @@ def test_post_response_with_params(mock_session_cls):
     params = {"action": "create"}
     
     result = api.post_response("http://api.example.com/assets", body, headers, params=params)
+
+    assert result == mock_response
     
     mock_session.post.assert_called_once_with(
         "http://api.example.com/assets",
@@ -412,6 +414,9 @@ def test_get_maindata_values_by_code_caches_result(mock_get_maindata):
     # Call twice with different codes
     result1 = api.get_maindata_values_by_code("STATUS")
     result2 = api.get_maindata_values_by_code("UNKNOWN")
+
+    assert result1 == {"Active": 1}
+    assert result2 == {}
     
     # _get_maindata_values should only be called once
     mock_get_maindata.assert_called_once()
@@ -455,3 +460,4 @@ def test_create_assets_handles_empty_list(mock_post_response):
     mock_post_response.assert_called_once()
     call_args = mock_post_response.call_args
     assert call_args[1]["body"] == json.dumps([])
+    assert result == mock_response

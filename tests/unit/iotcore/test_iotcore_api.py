@@ -1,5 +1,4 @@
 from unittest.mock import MagicMock, patch
-import pytest
 
 from ingestion_engine.iotcore.iotcore_api import IOTCoreAPI
 
@@ -81,6 +80,8 @@ def test_get_response_with_params(mock_session_cls):
         params=params,
         timeout=(5, 30)
     )
+
+    assert result == mock_response
 
 
 @patch("ingestion_engine.iotcore.iotcore_api.requests.Session")

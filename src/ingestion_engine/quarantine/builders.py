@@ -9,7 +9,6 @@ def build_quarantine_records_from_df(df, run_id: str, environment: str, template
     Args:
         df: The DataFrame containing the data.
         run_id (str): The run ID.
-        client (str): The client identifier.
         environment (str): The environment identifier.
         template (str): The template code.
         stage (FailureStage): The failure stage.

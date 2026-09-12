@@ -1,0 +1,61 @@
+available_environments:
+  - DEV
+  - QA
+  - PRE
+  - PROD
+
+source:
+  db_schema: snapshot_gis_go
+
+templates:
+    - XV_pipe
+    - XV_tank
+    - XV_sensor
+    - XV_sector
+    - XV_pump
+    - XV_manual_valve
+    - XV_service_connection
+    - XV_sampling_point
+    - XV_customer_meter
+    - XV_customer_meter_site
+    - XV_well
+    - XV_water_treatment_plant
+    - XV_wastewater_treatment_plant
+    - XV_management_area
+
+storage:
+  container: xv-dataset
+
+  paths:
+    raw: pruebas/raw
+    standard: pruebas/standard
+    quarantine: pruebas/quarantine
+
+data_quality:
+  core_fields:
+    - id
+    - name
+    - geom
+  non_null_fields:
+    - id
+    - name
+  id_column: id
+  geometry_column: geom
+
+pseudonimization:
+  enabled: true
+  text_columns:
+      - XV_installation_location
+  geometry_columns:
+    - geom
+
+dmd:
+  asset_name_prefix: "TFMDFP - "
+  code_reference_prefix: "TFMDFP - "
+  origin_id: 1
+  consumer_application_id: 1
+  main_hierarchy_parent: 123456
+  batch_size: 100
+
+quality_threshold:
+  max_quarantine_ratio: 0.2
