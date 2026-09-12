@@ -3,14 +3,6 @@ from pyspark.sql.types import StructField
 
 from ingestion_engine.extraction.postgres_reader import read_table_from_postgres
 
-# _convert_geometry_columns
-
-def make_field(name, data_type):
-    f = MagicMock(spec=StructField)
-    f.name = name
-    f.dataType = data_type
-    return f
-
 # read_table_from_postgres
 
 ENV = {
