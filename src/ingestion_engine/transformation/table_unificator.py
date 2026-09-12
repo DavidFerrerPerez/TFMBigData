@@ -1,13 +1,11 @@
-from pyspark.sql import SparkSession, DataFrame
+from pyspark.sql import DataFrame
 
 def unify_tables(source_tables: list[DataFrame]) -> DataFrame:
     """
     Unifies multiple tables into a single table.
 
     Args:
-        spark (SparkSession): The Spark session.
         source_tables (list[DataFrame]): A list of DataFrames to unify.
-        unified_table_name (str): The name of the unified table.
 
     Returns:
         DataFrame: The unified DataFrame.

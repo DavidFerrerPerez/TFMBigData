@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import MagicMock, patch, mock_open
+from unittest.mock import MagicMock, patch
 
 from ingestion_engine.pipelines.errors import PipelineExecutionError, QuarantineThresholdExceededError
 from ingestion_engine.pipelines.metrics import TemplateCounts

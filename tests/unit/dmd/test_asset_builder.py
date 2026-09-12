@@ -101,7 +101,7 @@ def test_build_geometry_returns_type_and_coordinates_from_template():
     asset_data = _make_asset_data(geometry=geometry)
     asset_data.asDict.return_value = {"geometry": geometry}
 
-    result = build_geometry({"geometry_type": "Point"}, asset_data, "geometry")
+    result = build_geometry(asset_data, "geometry")
 
     assert result == {"type": "Point", "coordinates": (10.0, 20.0)}
 
@@ -111,7 +111,7 @@ def test_build_geometry_falls_back_to_asset_geom_type_when_template_has_none():
     asset_data = _make_asset_data(geometry=geometry)
     asset_data.asDict.return_value = {"geometry": geometry}
 
-    result = build_geometry({"geometry_type": None}, asset_data, "geometry")
+    result = build_geometry(asset_data, "geometry")
 
     assert result["type"] == "LineString"
     assert result["coordinates"] == ((0.0, 0.0), (1.0, 1.0))
@@ -121,6 +121,6 @@ def test_build_geometry_returns_none_when_geometry_column_is_absent_from_row():
     asset_data = MagicMock()
     asset_data.asDict.return_value = {}  # geometry column not present
 
-    result = build_geometry({"geometry_type": "Point"}, asset_data, "geometry")
+    result = build_geometry(asset_data, "geometry")
 
     assert result is None

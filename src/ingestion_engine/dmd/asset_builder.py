@@ -33,7 +33,7 @@ def build_asset(asset_data, characteristics: list[dict], template_data: dict, in
         "isEnabled": not bool(template_data["is_deleted"]),
         "isDeleted": bool(template_data["is_deleted"]),
         "originId": ingestion_config.dmd.origin_id,
-        "geometry": build_geometry(template_data, asset_data, ingestion_config.data_quality.geometry_column),
+        "geometry": build_geometry(asset_data, ingestion_config.data_quality.geometry_column),
         "externalObjects": [
             {
                 "externalId": asset_data["id"],
@@ -56,13 +56,13 @@ def _get_characteristic_value(characteristics: list[dict], characteristic_code: 
     return None
 
 
-def build_geometry(template_data: dict, asset_data, geometry_column: str) -> dict | None:
+def build_geometry(asset_data, geometry_column: str) -> dict | None:
     """
     Build the GeoJSON-like geometry object expected by DMD.
 
     Args:
-        template_data: DMD template metadata.
         asset_data: Spark Row containing asset data.
+        geometry_column: Name of the column containing the geometry data.
 
     Returns:
         dict | None: Geometry object or None when the asset has no valid geometry.
@@ -76,9 +76,6 @@ def build_geometry(template_data: dict, asset_data, geometry_column: str) -> dic
     geom = asset_data[geometry_column]
     if not is_valid(geom):
         return None
-
-    actual_type = geom.geom_type
-    expected_type = template_data.get("geometry_type")
 
     geometry = mapping(force_2d(geom))
     return {"type": geometry["type"], "coordinates": geometry["coordinates"]}

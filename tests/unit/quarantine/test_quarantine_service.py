@@ -28,7 +28,7 @@ def _make_service(base_path=""):
 # write — empty input
 
 def test_write_returns_empty_list_when_no_records():
-    service, blob_client = _make_service()
+    service, _ = _make_service()
     result = service.write([])
     assert result == []
 
@@ -48,13 +48,13 @@ def test_write_uploads_one_file_for_one_record():
 
 
 def test_write_returns_one_path_for_one_record():
-    service, blob_client = _make_service()
+    service, _ = _make_service()
     result = service.write([_make_record()])
     assert len(result) == 1
 
 
 def test_write_returns_a_string_path():
-    service, blob_client = _make_service()
+    service, _ = _make_service()
     result = service.write([_make_record()])
     assert isinstance(result[0], str)
 

@@ -1,11 +1,7 @@
 from unittest.mock import MagicMock, patch
-from pyspark.sql.types import BinaryType, StringType, IntegerType, StructField
+from pyspark.sql.types import StructField
 
-from ingestion_engine.extraction.postgres_reader import (
-    _convert_geometry_columns,
-    read_table_from_postgres,
-)
-
+from ingestion_engine.extraction.postgres_reader import read_table_from_postgres
 
 # _convert_geometry_columns
 
