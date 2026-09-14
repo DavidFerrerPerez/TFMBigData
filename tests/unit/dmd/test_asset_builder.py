@@ -12,11 +12,12 @@ def _make_asset_data(name="Pump Station 1", asset_id="asset-001", geometry=None,
     return mock
 
 
-def _make_template(template_id=42, code="PUMP", is_deleted=False, geometry_type="Point"):
+def _make_template(template_id=42, code="PUMP", is_deleted=False, is_enabled=True, geometry_type="Point"):
     return {
         "id": template_id,
         "code": code,
         "is_deleted": is_deleted,
+        "is_enabled": is_enabled,
         "geometry_type": geometry_type,
     }
 
@@ -49,18 +50,18 @@ def test_build_asset_uses_xv_hash_code_as_code_reference():
 
 # build_asset — template fields
 
-def test_build_asset_is_enabled_when_template_is_not_deleted():
+def test_build_asset_is_enabled_when_template_is_not_deleted_and_enabled():
     asset_data = _make_asset_data()
     config = _make_ingestion_config()
-    result = build_asset(asset_data, [], _make_template(is_deleted=False), config)
+    result = build_asset(asset_data, [], _make_template(is_deleted=False, is_enabled=True), config)
     assert result["isEnabled"] is True
     assert result["isDeleted"] is False
 
 
-def test_build_asset_is_disabled_when_template_is_deleted():
+def test_build_asset_is_disabled_when_template_is_deleted_or_disabled():
     asset_data = _make_asset_data()
     config = _make_ingestion_config()
-    result = build_asset(asset_data, [], _make_template(is_deleted=True), config)
+    result = build_asset(asset_data, [], _make_template(is_deleted=True, is_enabled=False), config)
     assert result["isEnabled"] is False
     assert result["isDeleted"] is True
 
