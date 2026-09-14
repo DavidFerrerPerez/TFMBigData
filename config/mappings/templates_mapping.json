@@ -1,3 +1,4 @@
 {
-    "XV_pipe": ["tuberias", "acometidas"]
+    "XV_pipe": ["tuberias", "acometidas"],
+    "XV_valve": ["XV_manual_valve", "llaves"]
 }

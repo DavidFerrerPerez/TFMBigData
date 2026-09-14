@@ -30,7 +30,7 @@ def build_asset(asset_data, characteristics: list[dict], template_data: dict, in
         "templateCode": template_data["code"],
         "characteristics": characteristics,
         "name": name,
-        "isEnabled": not bool(template_data["is_deleted"]),
+        "isEnabled": bool(template_data["is_enabled"]),
         "isDeleted": bool(template_data["is_deleted"]),
         "originId": ingestion_config.dmd.origin_id,
         "geometry": build_geometry(asset_data, ingestion_config.data_quality.geometry_column),
