@@ -9,19 +9,7 @@ source:
 
 templates:
     - XV_pipe
-    - XV_tank
-    - XV_sensor
-    - XV_sector
-    - XV_pump
     - XV_manual_valve
-    - XV_service_connection
-    - XV_sampling_point
-    - XV_customer_meter
-    - XV_customer_meter_site
-    - XV_well
-    - XV_water_treatment_plant
-    - XV_wastewater_treatment_plant
-    - XV_management_area
 
 storage:
   container: xv-dataset
