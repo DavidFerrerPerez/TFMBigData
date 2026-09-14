@@ -49,11 +49,11 @@ def test_create_characteristics_list_skips_iotsynoptic():
     assert result[1]["code"] == "type_code"
 
 
-def test_create_characteristics_list_skips_iotsinoptic():
-    """Test that create_characteristics_list skips iotsinoptic types (typo variant)."""
+def test_create_characteristics_list_skips_iotsynoptic():
+    """Test that create_characteristics_list skips iotsynoptic types (typo variant)."""
     template_chars = [
         {"name": "Name", "code": "name_code", "type": "string"},
-        {"name": "Synoptic", "code": "synoptic_code", "type": "iotsinoptic"},
+        {"name": "Synoptic", "code": "synoptic_code", "type": "iotsynoptic"},
     ]
     
     result = create_characteristics_list(template_chars)
