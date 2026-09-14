@@ -26,8 +26,8 @@ def create_characteristics_list(template_characteristics: list[dict]) -> list[di
             "type": characteristic.get("type"),
         }
 
-        # IoT synoptic characteristics are currently not supported.
-        if item["type"] in {"iotsynoptic", "iotsinoptic"}:
+        # IoT synoptic characteristics are currently present but disabled in DMD.
+        if item["type"] == "iotsynoptic":
             continue
 
         characteristics.append(item)
