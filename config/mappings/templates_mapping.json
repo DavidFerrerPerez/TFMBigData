@@ -1,4 +1,4 @@
 {
     "XV_pipe": ["tuberias", "acometidas"],
-    "XV_valve": ["XV_manual_valve", "llaves"]
+    "XV_manual_valve": ["valvula", "valvula_acometida", "valvula_purga", "valvula_retencion"]
 }

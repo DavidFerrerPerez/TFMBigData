@@ -35,6 +35,16 @@ RUN pdm config venv.in_project false \
     && pdm use -f $(pdm venv list | grep -o '/venv/[^ ]*')/bin/python \
     && pdm install --no-editable
 
+RUN echo 'print("Spark dependencies resolved")' > /tmp/resolve_jars.py \
+    && pdm run spark-submit \
+        --packages org.postgresql:postgresql:42.7.13,org.apache.sedona:sedona-spark-3.5_2.12:1.7.2,org.apache.hadoop:hadoop-azure:3.4.0 \
+        /tmp/resolve_jars.py \
+    && mkdir -p /app/jars \
+    && cp /home/ingestion/.ivy2/jars/*.jar /app/jars/ \
+    && rm -rf /home/ingestion/.ivy2 /tmp/resolve_jars.py
+
+ENV SPARK_JARS_DIR=/app/jars
+
 COPY --chown=ingestion:ingestion src ./src
 COPY --chown=ingestion:ingestion config ./config
 

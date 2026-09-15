@@ -2,28 +2,45 @@ import os
 from sedona.spark import SedonaContext
 import logging
 
+from pathlib import Path
 
-def create_spark_session(
-    app_name: str = "ingestion-engine",
-) -> SedonaContext:
+SPARK_PACKAGES = [
+    "org.postgresql:postgresql:42.7.13",
+    "org.apache.sedona:sedona-spark-3.5_2.12:1.7.2",
+    "org.apache.hadoop:hadoop-azure:3.4.0",
+]
+
+
+def create_spark_session(app_name: str = "ingestion-engine") -> SedonaContext:
     """Create and configure a Spark session with Sedona support."""
 
     account_name = os.environ["AZURE_STORAGE_ACCOUNT_NAME"]
     account_key = os.environ["AZURE_STORAGE_ACCOUNT_KEY"]
 
-    spark = (
-        SedonaContext.builder()
-        .appName(app_name)
-        .config(
-            "spark.jars.packages",
-            ",".join(
-                [
-                    "org.postgresql:postgresql:42.7.13",
-                    "org.apache.sedona:sedona-spark-3.5_2.12:1.7.2",
-                    "org.apache.hadoop:hadoop-azure:3.4.0",
-                ]
-            ),
+    builder = SedonaContext.builder().appName(app_name)
+
+    jars_dir = os.environ.get("SPARK_JARS_DIR")
+
+    if jars_dir:
+        jar_paths = sorted(Path(jars_dir).glob("*.jar"))
+
+        if not jar_paths:
+            raise RuntimeError(
+                f"No Spark JAR dependencies found in '{jars_dir}'."
+            )
+
+        builder = builder.config(
+            "spark.jars",
+            ",".join(str(path) for path in jar_paths),
         )
+    else:
+        builder = builder.config(
+            "spark.jars.packages",
+            ",".join(SPARK_PACKAGES),
+        )
+
+    spark = (
+        builder
         .config(
             f"spark.hadoop.fs.azure.account.key."
             f"{account_name}.blob.core.windows.net",
@@ -31,19 +48,27 @@ def create_spark_session(
         )
         .config("spark.sql.parquet.int96RebaseModeInWrite", "CORRECTED")
         .config("spark.ui.showConsoleProgress", "false")
-        
-        .config("spark.hadoop.mapreduce.fileoutputcommitter.algorithm.version", "2")
-        .config("spark.hadoop.mapreduce.fileoutputcommitter.cleanup-failures.ignored", "true")
-        
+        .config(
+            "spark.hadoop.mapreduce.fileoutputcommitter.algorithm.version",
+            "2",
+        )
+        .config(
+            "spark.hadoop.mapreduce.fileoutputcommitter.cleanup-failures.ignored",
+            "true",
+        )
         .config("spark.hadoop.fs.azure.rename.optimization", "false")
         .config("spark.hadoop.fs.azure.thread.pool.size", "32")
         .config("spark.hadoop.fs.azure.timeout", "90000")
         .config("spark.hadoop.fs.azure.block.size", "268435456")
         .config("spark.hadoop.fs.azure.fast.upload", "true")
-        .config("spark.hadoop.fs.azure.fast.upload.block.size", "268435456")
-        
-        .config("spark.driver.extraJavaOptions", "-Dlog4j.logger.org.apache.hadoop.fs.azure=WARN")
-        
+        .config(
+            "spark.hadoop.fs.azure.fast.upload.block.size",
+            "268435456",
+        )
+        .config(
+            "spark.driver.extraJavaOptions",
+            "-Dlog4j.logger.org.apache.hadoop.fs.azure=WARN",
+        )
         .getOrCreate()
     )
 
@@ -60,8 +85,6 @@ def create_spark_session(
             "org.apache.spark.sql.execution.datasources.parquet.GeoParquetFileFormat",
         ]
 
-        # Spark images can use either Log4j 1.x bridge or Log4j2.
-        # Try both APIs to keep behavior consistent across environments.
         try:
             log_manager = jvm.org.apache.log4j.LogManager
             level = jvm.org.apache.log4j.Level
