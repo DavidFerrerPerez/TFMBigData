@@ -1,69 +1,153 @@
 # TFMBigData
 
-The aim of this repository is to allow the user to migrate their company data from their databases to Ídrica's DMD, cleaning and translating them to DMD standard throughout the process.
+This project implements an ingestion engine that extracts client data from PostgreSQL, standardizes and validates it according to Ídrica's DMD model, stores intermediate datasets in Azure Blob Storage, and uploads the resulting assets to DMD.
+
+The application is packaged as a Docker image and can be executed directly or orchestrated through Apache Airflow.
 
 ## 1. Configuration
 
-### Requirements
+### Runtime variables
 
-- Docker Desktop with Docker Compose.
-- A published ingestion image in GHCR.
-- Java 17 and PDM only when running the project or tests outside Docker.
-
-Create `config.env` locally. Do not commit this file.
+Create a local `config.env` file on the host machine. It must not be committed to Git or copied into the Docker image.
 
 ```dotenv
-# Source PostgreSQL database
-POSTGRES_HOST_DEV=
-POSTGRES_PORT_DEV=5432
-POSTGRES_DATABASE_DEV=
-POSTGRES_USER_DEV=
-POSTGRES_PASSWORD_DEV=
+# PostgreSQL
+POSTGRES_HOST_<ENV>=
+POSTGRES_PORT_<ENV>=5432
+POSTGRES_DATABASE_<ENV>=
+POSTGRES_USER_<ENV>=
+POSTGRES_PASSWORD_<ENV>=
 
 # Azure Blob Storage
 AZURE_STORAGE_CONNECTION_STRING=
 AZURE_STORAGE_ACCOUNT_NAME=
 AZURE_STORAGE_ACCOUNT_KEY=
 
-# DMD API
-DMD_API_URL_DEV=
-DMD_API_TOKEN_DEV=
+# DMD
+DMD_API_URL_<ENV>=
+DMD_API_TOKEN_<ENV>=
 
-# IoT Core API
-IOTCORE_API_URL_DEV=
-IOTCORE_API_TOKEN_DEV=
-IOTCORE_API_DRIVER_DEV=
+# IoT Core
+IOTCORE_API_URL_<ENV>=
+IOTCORE_API_TOKEN_<ENV>=
+IOTCORE_API_DRIVER_<ENV>=
 
-# Anonymization
+# Pseudonymization
 PSEUDONYMIZATION_SALT=
 PSEUDONYMIZATION_OFFSET_X=
 PSEUDONYMIZATION_OFFSET_Y=
-
-# Airflow deployment
-INGESTION_IMAGE=ghcr.io/davidferrerperez/ingestion-engine:latest
-INGESTION_ENVIRONMENT=DEV
-DOCKER_REGISTRY_CONN_ID=github_registry
 ```
 
-The suffix of environment-specific variables must match `INGESTION_ENVIRONMENT`, for example `_DEV`, `_QA`, `_PRE`, or `_PROD`.
+Environment-specific variables (`<ENV>`) must match the selected environment: `DEV`, `QA`, `PRE`, or `PROD`.
 
-Configure the deployment in `config/ingestion.yaml`, including the source schema, templates, Azure paths, validation fields, anonymized columns, batch size, and DMD hierarchy parent. 
+If only the Docker image has been downloaded, `config.env` can be created in any local directory, for example:
 
-Configure source tables and characteristic mappings in `config/mappings/`.
+```text
+TFMBigData-run/
+└── config.env
+```
 
-If the GHCR image is private, create an Airflow connection with:
+Docker reads this file at runtime using `--env-file`; the file itself remains outside the container.
 
-- Connection ID: `github_registry`
-- Connection type: `Docker`
-- Host: `https://ghcr.io`
-- Login: GitHub username
-- Password: classic GitHub PAT with `read:packages`
+### Application configuration
 
-Configure DOCKER_GID variable in `config.env`.
+Application configuration and mappings are stored under:
 
-The PAT is stored in Airflow, not in `config.env`. If Airflow has no persistent volume, this connection must be recreated whenever its container is recreated.
+```text
+config/
+├── ingestion.yaml
+└── mappings/
+```
 
-## 2. Execution
+The files included in the published image contain placeholders and are intended as examples. Before running a real ingestion, they must be replaced with the configuration for the target deployment.
+
+The recommended approach is to create a local deployment directory:
+
+```text
+TFMBigData-run/
+├── config.env
+└── config/
+    ├── ingestion.yaml
+    └── mappings/
+        └── ...
+```
+
+and mount `config/` into the container when using docker run:
+
+```bash
+-v "$(pwd)/config:/app/config:ro"
+```
+
+On Windows PowerShell:
+
+```powershell
+-v "${PWD}/config:/app/config:ro"
+```
+
+Alternatively, the configuration files can be filled in before building the image, in which case they are copied into the resulting image.
+
+## 2. Run with Docker
+
+Pull the published image:
+
+```bash
+docker pull ghcr.io/davidferrerperez/ingestion-engine:80
+```
+
+Create `config.env` and the required `config/` directory, then run the three stages sequentially using the same `run_id`.
+
+### Extraction
+
+```bash
+docker run --rm \
+  --env-file config.env \
+  -v "$(pwd)/config:/app/config:ro" \
+  ghcr.io/davidferrerperez/ingestion-engine:80 \
+  run --stage extract --environment DEV --run-id manual-test-001
+```
+
+### Standardization
+
+```bash
+docker run --rm \
+  --env-file config.env \
+  -v "$(pwd)/config:/app/config:ro" \
+  ghcr.io/davidferrerperez/ingestion-engine:80 \
+  run --stage standardize --environment DEV --run-id manual-test-001
+```
+
+### Upload
+
+```bash
+docker run --rm \
+  --env-file config.env \
+  -v "$(pwd)/config:/app/config:ro" \
+  ghcr.io/davidferrerperez/ingestion-engine:80 \
+  run --stage upload --environment DEV --run-id manual-test-001
+```
+
+The same `run_id` must be reused because each stage reads the datasets generated by the previous one.
+
+The complete flow is:
+
+```text
+extract -> standardize -> upload
+```
+
+Once Raw data has been persisted in Azure Blob Storage, `standardize` can be rerun without access to PostgreSQL. Likewise, `upload` can be rerun from existing Standard data by reusing the original `run_id`.
+
+## 3. Run with Airflow
+
+Airflow is the intended orchestration mechanism for complete ingestion runs.
+
+Clone the repository and add the following variables to `config.env`:
+
+```dotenv
+INGESTION_IMAGE=ghcr.io/davidferrerperez/ingestion-engine:latest
+INGESTION_ENVIRONMENT=DEV
+DOCKER_REGISTRY_CONN_ID=github_registry # leave this empty if it is not created
+DOCKER_GID=
+```
 
 Start Airflow:
 
@@ -71,53 +155,75 @@ Start Airflow:
 docker compose --env-file config.env up -d --build airflow
 ```
 
-Open [http://localhost:8081](http://localhost:8081), sign in, enable the `ingestion_engine` DAG, and trigger a new run. Airflow executes:
+Open:
+
+```text
+http://localhost:8081
+```
+
+Enable the `ingestion_engine` DAG and trigger a run.
+
+Airflow executes:
 
 ```text
 validate_configuration -> extract -> standardize -> upload
 ```
 
-Each stage uses the same Airflow run ID and runs in a temporary container created from `INGESTION_IMAGE`. View progress and errors from the task logs in the Airflow interface.
+All ingestion stages use the same Airflow `run_id`.
 
-### 2.1 Reprocessing downstream stages
+If the GHCR image is private, create an Airflow Docker connection named `github_registry` using:
 
-Once extraction has persisted the Raw datasets in Azure Blob Storage, the downstream stages no longer need access to the source PostgreSQL infrastructure. Standardization can be rerun from the existing Raw data, and upload can be rerun from the existing Standard data, as long as the original `run_id` is reused.
+- Host: `https://ghcr.io`
+- Login: GitHub username
+- Password: GitHub PAT with `read:packages`
 
-```bash
-pdm run ingestion-engine run --stage standardize --environment DEV --run-id "<existing_run_id>"
-pdm run ingestion-engine run --stage upload --environment DEV --run-id "<existing_run_id>"
-```
-
-The same behavior is available for an existing Airflow DAG run by rerunning `standardize` and `upload` without rerunning `extract`. The current `ingestion_engine` DAG is intended for complete ingestion runs; it does not create a separate new Airflow run for reprocessing data from a previous `run_id`.
-
-When changing `INGESTION_IMAGE` or another value in `config.env`, recreate Airflow so it loads the new configuration:
-
-```bash
-docker compose --env-file config.env up -d --force-recreate airflow
-```
-
-Stop Airflow without deleting its persistent data:
+Stop Airflow without deleting persistent data:
 
 ```bash
 docker compose down
 ```
 
-Do not use `docker compose down -v` unless you also want to delete Airflow connections and execution history.
+## 4. Build locally
 
-## 3. Tests
+Build the ingestion image from the repository:
 
-Install the project and test dependencies with PDM, then execute the tests:
+```bash
+docker build -t ingestion-engine:local .
+```
+
+A rebuild is required when application code, dependencies, the Dockerfile, or bundled configuration files change.
+
+Spark JVM dependencies are resolved during the Docker build and included in the resulting image, avoiding Maven dependency resolution when the container starts.
+
+## 5. Tests
+
+Install the project and test dependencies:
 
 ```bash
 pdm install -G test
+```
+
+Run the tests:
+
+```bash
 pdm run pytest tests
 ```
 
-
-To generate a coverage report:
+Generate a coverage report:
 
 ```bash
 pdm run pytest tests --cov=ingestion_engine --cov-report=term-missing
 ```
 
-Jenkins also runs `pytest` during each configured branch build. A successful `main` build publishes both a numbered image tag and `latest` to GHCR.
+## 6. CI/CD
+
+Jenkins runs the automated tests, builds the Docker image, and publishes successful `main` builds to GHCR.
+
+Published images use:
+
+```text
+ghcr.io/davidferrerperez/ingestion-engine:80
+ghcr.io/davidferrerperez/ingestion-engine:latest
+```
+
+A numbered tag is recommended when an exact version must be reproduced.
